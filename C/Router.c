@@ -10,6 +10,9 @@ struct cell {
 
 struct cell maze[13][13];
 
+int starting_station = 0;
+int end_station = 0;
+
 #include <stdio.h>
 void red(){
   printf("\033[0;31m");
@@ -58,6 +61,10 @@ void initialize_maze(){
         maze[2][i].v = 0;
         maze[10][i].v = 0;
     }
+}
+
+void output(){
+    
 }
 
 void visualize_maze(){
