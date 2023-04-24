@@ -27,12 +27,36 @@ void reset(){
   printf("\033[0m");
 }
 
+void initialize_maze_random(){
+    int i, j;
+    for(i = 0; i < 13; i++){
+        for(j = 0; j < 13; j++){
+            int r = rand() % 20 - 1;
+            maze[i][j].v = r;
+        }
+    }
+}
+
 void initialize_maze(){
     int i, j;
     for(i = 0; i < 13; i++){
         for(j = 0; j < 13; j++){
             maze[i][j].v = -1;
         }
+    }
+    for(i = 0; i < 13; i++){
+        maze[i][4].v = 0;
+        maze[i][6].v = 0;
+        maze[i][8].v = 0;
+        maze[4][i].v = 0;
+        maze[6][i].v = 0;
+        maze[8][i].v = 0;
+    }
+    for(i = 2; i < 11; i++){
+        maze[i][2].v = 0;
+        maze[i][10].v = 0;
+        maze[2][i].v = 0;
+        maze[10][i].v = 0;
     }
 }
 
@@ -56,6 +80,9 @@ void visualize_maze(){
                     nDigits = 2;
                 }
             }
+            else {
+                yellow();
+            }
             if(nDigits != 2){
                 printf(" ");
             }
@@ -73,6 +100,7 @@ void visualize_maze(){
 }
 
 int main(){
+    srand(time(NULL));
     initialize_maze();
     visualize_maze();
 }
