@@ -5,15 +5,19 @@
 #include <string.h>
 
 struct cell {
-    int v;
-    char name[8];
+    int v; // Value
+    int x, y; // Location in the maze
+    char name[8]; // Name, not used at the moment
 };
 
+// Matrix represantation of the maze
 struct cell maze[13][13];
 
+// Stations between which a path has to be found
 int starting_station = 0;
 int end_station = 0;
 
+// Returns the cell corresponding to the according station
 struct cell get_station(int station){
     if(station == 1){
         return maze[4][12];
@@ -53,6 +57,7 @@ struct cell get_station(int station){
     }
 }
 
+// Returns cell corresponding to the according crossing
 struct cell get_crossing(int i, int j){
     int k, l;
     k = 2 + i * 2;
@@ -60,6 +65,7 @@ struct cell get_crossing(int i, int j){
     return maze[k][l];
 }
 
+// Returns cell corresponding to the according edge
 // 0 - south, 1 - east, 2 - north, 3 - west
 struct cell get_edge(int i, int j, int direction){
     int k, l;
@@ -80,7 +86,7 @@ struct cell get_edge(int i, int j, int direction){
     return maze[k][l];
 }
 
-#include <stdio.h>
+// Functions to print text in a certain color
 void red(){
   printf("\033[0;31m");
 }
@@ -97,6 +103,7 @@ void reset(){
   printf("\033[0m");
 }
 
+// 
 void initialize_maze_random(){
     int i, j;
     for(i = 0; i < 13; i++){
