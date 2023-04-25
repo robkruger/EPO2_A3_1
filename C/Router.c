@@ -27,6 +27,17 @@ void reset(){
   printf("\033[0m");
 }
 
+void read_input(){
+    int numofblock, i, ci, cj; //variables
+    char l;
+    //scans for number of blockades and then puts blockades into function
+    scanf("%i", &numofblock);
+    for(i=0; i<numofblock; i++){
+        scanf("%i%i%c", &ci,&cj,&l)
+        getcrossing(ci, cj)
+    }
+}
+
 void initialize_maze_random(){
     int i, j;
     for(i = 0; i < 13; i++){
