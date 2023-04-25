@@ -86,6 +86,26 @@ struct cell get_edge(int i, int j, int direction){
     return maze[k][l];
 }
 
+void change_edge(int i, int j, int direction, int v){
+    int k, l;
+    k = 2 + i * 2;
+    l = 2 + j * 2;
+    if(direction == 0){
+        l += 1;
+    }
+    else if(direction == 1){
+        k += 1;
+    }
+    else if(direction == 2){
+        l -= 1;
+    }
+    else if(direction == 3){
+        k -= 1;
+    }
+    maze[k][l].v = v;
+    printf("%d%d", k , l);
+}
+
 // Functions to print text in a certain color
 void red(){
   printf("\033[0;31m");
@@ -104,24 +124,28 @@ void reset(){
 }
 
 void read_input(){
-    int numofblock, i, ci, cj; //variables
-    char l;
-    //scans for number of blockades and then puts blockades into function
+    int numofblock, i, ci, cj, dir_n; //variables
+    char dir_l;
+    //scans for number of blockades
     scanf("%i", &numofblock);
-    for(i=0; i<numofblock; i++){
-        scanf("%i%i%c", &ci,&cj,&l)
-        getcrossing(ci, cj)
-    }
-}
-
-void read_input(){
-    int numofblock, i, ci, cj; //variables
-    char l;
-    //scans for number of blockades and then puts blockades into function
-    scanf("%i", &numofblock);
-    for(i=0; i<numofblock; i++){
-        scanf("%i%i%c", &ci,&cj,&l)
-        getcrossing(ci, cj)
+    for(i=0; i<numofblock; i++){ //loops scan for blockade info, runs for amount of inputs
+        scanf("%i %i %c", &ci,&cj,&dir_l);
+        //make dir_n the number corresponding to direction
+        if (dir_l == 's'){
+            dir_n = 0;
+        }
+        else if (dir_l == 'w'){
+            dir_n = 3;
+        }
+        else if (dir_l == 'n'){
+            dir_n = 2;
+        }
+        else {
+            dir_n = 1;
+        }
+        printf("%i%i%c", ci, cj, dir_l);
+        //function to get the respective edges
+        change_edge(ci, cj, dir_n, -1);
     }
 }
 
@@ -207,5 +231,6 @@ void visualize_maze(){
 int main(){
     srand(time(NULL));
     initialize_maze();
+    read_input();
     visualize_maze();
 }
