@@ -13,6 +13,10 @@ struct cell {
 // Matrix represantation of the maze
 struct cell maze[13][13];
 
+struct path {
+    struct cell path_array[100];
+};
+
 // Stations between which a path has to be found
 int starting_station = 0;
 int end_station = 0;
@@ -86,6 +90,32 @@ struct cell get_edge(int i, int j, int direction){
     return maze[k][l];
 }
 
+void change_edge(int i, int j, int direction, int v){
+    int k, l;
+    k = 2 + i * 2;
+    l = 2 + j * 2;
+    if(direction == 0){
+        k += 1;
+    }
+    else if(direction == 1){
+        l -= 1;
+    }
+    else if(direction == 2){
+        k -= 1;
+    }
+    else if(direction == 3){
+        l += 1;
+    }
+    maze[k][l].v = v;
+}
+
+int cells_equal(struct cell cell_1, struct cell cell_2){
+    if(cell_1.x == cell_2.x && cell_1.y == cell_2.y){
+        return 1;
+    }
+    return 0;
+}
+
 // Functions to print text in a certain color
 void red(){
   printf("\033[0;31m");
@@ -103,25 +133,67 @@ void reset(){
   printf("\033[0m");
 }
 
-// 
+// Initialize the maze with random values
 void initialize_maze_random(){
     int i, j;
     for(i = 0; i < 13; i++){
         for(j = 0; j < 13; j++){
             int r = rand() % 20 - 1;
             maze[i][j].v = r;
+            maze[i][j].x = i;
+            maze[i][j].y = j;
         }
     }
 }
 
-void initialize_maze(){
+// Initialize the maze with a predefined path
+void initialize_maze_test(){
     int i, j;
-    // Initialize everything as an edge
+    // Initialize everything as an edge first
     for(i = 0; i < 13; i++){
         for(j = 0; j < 13; j++){
             maze[i][j].v = -1;
+            maze[i][j].x = i;
+            maze[i][j].y = j;
         }
     }
+    // Set the traversable cells to 0
+    for(i = 0; i < 13; i++){
+        maze[i][4].v = 0;
+        maze[i][6].v = 0;
+        maze[i][8].v = 0;
+        maze[4][i].v = 0;
+        maze[6][i].v = 0;
+        maze[8][i].v = 0;
+    }
+    for(i = 2; i < 11; i++){
+        maze[i][2].v = 0;
+        maze[i][10].v = 0;
+        maze[2][i].v = 0;
+        maze[10][i].v = 0;
+    }
+    maze[0][8].v = 1;
+    maze[1][8].v = 2;
+    maze[2][8].v = 3;
+    maze[2][7].v = 4;
+    maze[2][6].v = 5;
+    maze[2][5].v = 6;
+    maze[2][4].v = 7;
+    maze[1][4].v = 8;
+    maze[0][4].v = 9;
+}
+
+void initialize_maze(){
+    int i, j;
+    // Initialize everything as an edge first
+    for(i = 0; i < 13; i++){
+        for(j = 0; j < 13; j++){
+            maze[i][j].v = -1;
+            maze[i][j].x = i;
+            maze[i][j].y = j;
+        }
+    }
+    // Set the traversable cells to 0
     for(i = 0; i < 13; i++){
         maze[i][4].v = 0;
         maze[i][6].v = 0;
@@ -138,10 +210,47 @@ void initialize_maze(){
     }
 }
 
-void output(){
-    struct cell starting_cell = get_station(starting_station);
-    struct cell end_cell = get_station(end_station);
+// Find the shortest path from starting station to end station
+struct path find_path(int start, int end){
+    struct cell ending_cell = get_station(end);
+    struct cell current_cell = get_station(start);
+    struct path path_object;
+
+    int i = 0;
+    while(!cells_equal(current_cell, ending_cell)){
+        int next_v = current_cell.v + 1;
+        int x = current_cell.x;
+        int y = current_cell.y;
+
+        path_object.path_array[i].x = current_cell.x;
+        path_object.path_array[i].y = current_cell.y;
+
+        if(maze[x + 1][y].v == next_v){
+            current_cell = maze[x + 1][y];
+        }
+        else if(maze[x - 1][y].v == next_v){
+            current_cell = maze[x - 1][y];
+        }
+        else if(maze[x][y + 1].v == next_v){
+            current_cell = maze[x][y + 1];
+        }
+        else if(maze[x][y - 1].v == next_v){
+            current_cell = maze[x][y - 1];
+        }
+        i++;
+    }
+    
+    path_object.path_array[i].x = current_cell.x;
+    path_object.path_array[i].y = current_cell.y;
+
+    return path_object;
 }
+
+// Output the path
+// void output(){
+//     struct cell starting_cell = get_station(starting_station);
+//     struct cell end_cell = get_station(end_station);
+// }
 
 void visualize_maze(){
     int i, j;
@@ -153,10 +262,10 @@ void visualize_maze(){
         printf("! ");
         for(j = 0; j < 13; j++){
             int nDigits = 1;
-            if(maze[i][j].v != 0){
-                if(maze[i][j].v != -1){
+            if(maze[j][i].v != 0){
+                if(maze[j][i].v != -1){
                     green();
-                    nDigits = floor(log10(abs(maze[i][j].v))) + 1;
+                    nDigits = floor(log10(abs(maze[j][i].v))) + 1;
                 }
                 else{
                     red();
@@ -169,7 +278,7 @@ void visualize_maze(){
             if(nDigits != 2){
                 printf(" ");
             }
-            printf("%d", maze[i][j].v);
+            printf("%d", maze[j][i].v);
             reset();
             printf(" ! ");
         }
@@ -186,4 +295,5 @@ int main(){
     srand(time(NULL));
     initialize_maze();
     visualize_maze();
+    return 0;
 }
