@@ -17,9 +17,8 @@ struct path {
     struct cell path_array[100];
 };
 
-// Stations between which a path has to be found
-int starting_station = 0;
-int end_station = 0;
+// Stations between which a path has to be found, -1 means there is no station.
+int stations[]= {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 
 // Returns the cell corresponding to the according station
 struct cell get_station(int station){
@@ -64,47 +63,28 @@ struct cell get_station(int station){
 // Returns cell corresponding to the according crossing
 struct cell get_crossing(int i, int j){
     int k, l;
-    k = 2 + i * 2;
-    l = 2 + j * 2;
+    k = 2 + j * 2;
+    l = 2 + i * 2;
     return maze[k][l];
 }
 
 // Returns cell corresponding to the according edge
 // 0 - south, 1 - east, 2 - north, 3 - west
-struct cell get_edge(int i, int j, int direction){
-    int k, l;
-    k = 2 + i * 2;
-    l = 2 + j * 2;
-    if(direction == 0){
-        k += 1;
-    }
-    else if(direction == 1){
-        l -= 1;
-    }
-    else if(direction == 2){
-        k -= 1;
-    }
-    else if(direction == 3){
-        l += 1;
-    }
-    return maze[k][l];
-}
-
 void change_edge(int i, int j, int direction, int v){
     int k, l;
-    k = 2 + i * 2;
-    l = 2 + j * 2;
+    k = 2 + j * 2;
+    l = 2 + i * 2;
     if(direction == 0){
-        k += 1;
+        l += 1;
     }
     else if(direction == 1){
-        l -= 1;
+        k += 1;
     }
     else if(direction == 2){
-        k -= 1;
+        l -= 1;
     }
     else if(direction == 3){
-        l += 1;
+        k -= 1;
     }
     maze[k][l].v = v;
 }
@@ -134,8 +114,9 @@ void reset(){
 }
 
 void read_input(){
-    int numofblock, i, ci, cj, dir_n; //variables
+    int numofblock, i, j, k, ci, cj, dir_n; //variables
     char dir_l;
+    j = 0;
     //scans for number of blockades
     scanf("%i", &numofblock);
     for(i=0; i<numofblock; i++){ //loops scan for blockade info, runs for amount of inputs
@@ -153,37 +134,18 @@ void read_input(){
         else {
             dir_n = 1;
         }
-        printf("%i%i%c", ci, cj, dir_l);
-        //function to get the respective edges
+        //function to get the respective edges and change them
         change_edge(ci, cj, dir_n, -1);
     }
+    //scan for input stations, stop when newline  is detected
+    char discard;
+    while(j<11 && scanf("%d%1[^\n]s", &stations[j], &discard) == 2){
+        j++;
+    }
+
 }
 
-void read_input(){
-    int numofblock, i, ci, cj, dir_n; //variables
-    char dir_l;
-    //scans for number of blockades
-    scanf("%i", &numofblock);
-    for(i=0; i<numofblock; i++){ //loops scan for blockade info, runs for amount of inputs
-        scanf("%i %i %c", &ci,&cj,&dir_l);
-        //make dir_n the number corresponding to direction
-        if (dir_l == 's'){
-            dir_n = 0;
-        }
-        else if (dir_l == 'w'){
-            dir_n = 3;
-        }
-        else if (dir_l == 'n'){
-            dir_n = 2;
-        }
-        else {
-            dir_n = 1;
-        }
-        printf("%i%i%c", ci, cj, dir_l);
-        //function to get the respective edges
-        change_edge(ci, cj, dir_n, -1);
-    }
-}
+
 
 // Initialize the maze with random values
 void initialize_maze_random(){
@@ -267,6 +229,11 @@ struct path find_path(int start, int end){
     struct cell ending_cell = get_station(end);
     struct cell current_cell = get_station(start);
     struct path path_object;
+    int j;
+    for(j=0; j<100; j++){
+        path_object.path_array[j].x = -1;
+        path_object.path_array[j].y = -1;
+    }
 
     int i = 0;
     while(!cells_equal(current_cell, ending_cell)){
@@ -296,6 +263,29 @@ struct path find_path(int start, int end){
     path_object.path_array[i].y = current_cell.y;
 
     return path_object;
+}
+
+//this function gets the start and end stations+ ones in between, calls the getroute functions 
+//for two stations at one time, and thus outputs a route for as much stations that is needed.
+void makeroute(){
+int station1, station2, i, j;
+struct path path;
+for(i=0; i<11; i++){
+    if(stations[i+1] == -1){
+        break;
+        // when the input of list becomes -1, which means there are no more stations to visit,
+        // stop the function.
+    }
+    station1 = stations[i];
+    station2 = stations[i+1];
+    path = find_path(station1,station2);
+    for(j=0; path.path_array[j].x!=-1; j=j+2){
+        printf("c%d%d ", path.path_array[j].x, path.path_array[j].y);
+        //prints the crossings of the path
+    }
+    printf("\n");
+}
+
 }
 
 // Output the path
@@ -345,8 +335,9 @@ void visualize_maze(){
 
 int main(){
     srand(time(NULL));
-    initialize_maze();
+    initialize_maze_test();
     read_input();
+    makeroute();
     visualize_maze();
     return 0;
 }
