@@ -297,7 +297,7 @@ int *find_neighbors(i, j){
     // allocate memory for the array
     int *n = (int *)malloc(4 * sizeof(int));
     if (0 <= i <= GRID_SIZE) {
-        
+        // hellow owrld
     }
 
 }
