@@ -3,6 +3,8 @@
 #include <math.h>
 #include <time.h>
 
+const int GRID_SIZE = 13;
+
 struct cell {
     int v;
     char name[8];
@@ -99,8 +101,30 @@ void visualize_maze(){
     }
 }
 
+int *find_neighbors(i, j){
+    // allocate memory for the array
+    int *n = (int *)malloc(4 * sizeof(int));
+    if (0 <= i <= GRID_SIZE) {
+        
+    }
+
+}
+
+void lee_start_2_target(start_row, start_col,
+                        target_row, target_col){
+    int i = 1;
+    maze[target_row][target_col].v = i;
+    while (maze[start_row][start_col].v == 0) {
+
+    }
+    
+
+}
+
 int main(){
     srand(time(NULL));
     initialize_maze();
+    lee_start_2_target(4,0, 8,0);
     visualize_maze();
+    return 0;
 }
