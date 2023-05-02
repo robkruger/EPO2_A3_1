@@ -24,6 +24,9 @@ struct path {
 // Stations between which a path has to be found, -1 means there is no station.
 int stations[]= {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 
+// 0 = North, 1 = East, 2 = South, 3 = West
+int direction;
+
 // Returns the cell corresponding to the according station
 struct cell get_station(int station){
     if(station == 1){
@@ -197,8 +200,20 @@ void initialize_maze_test(){
     maze[2][6].v = 5;
     maze[2][5].v = 6;
     maze[2][4].v = 7;
-    maze[1][4].v = 8;
-    maze[0][4].v = 9;
+    maze[3][4].v = 8;
+    maze[4][4].v = 9;
+    maze[4][3].v = 10;
+    maze[4][2].v = 11;
+    maze[5][2].v = 12;
+    maze[6][2].v = 13;
+    maze[6][3].v = 14;
+    maze[6][4].v = 15;
+    maze[7][4].v = 16;
+    maze[8][4].v = 17;
+    maze[8][3].v = 18;
+    maze[8][2].v = 19;
+    maze[8][1].v = 20;
+    maze[8][0].v = 21;
 }
 
 void initialize_maze(){
@@ -230,6 +245,18 @@ void initialize_maze(){
 
 // Find the shortest path from starting station to end station
 struct path find_path(int start, int end){
+    if(start == 1 || start == 2 || start == 3){
+        direction = 0;
+    }
+    else if(start == 4 || start == 5 || start == 6){
+        direction = 3;
+    }
+    else if(start == 7 || start == 8 || start == 9){
+        direction = 2;
+    }
+    else{
+        direction = 1;
+    }
     struct cell ending_cell = get_station(end);
     struct cell current_cell = get_station(start);
     struct path path_object;
@@ -283,8 +310,70 @@ for(i=0; i<11; i++){
     station1 = stations[i];
     station2 = stations[i+1];
     path = find_path(station1,station2);
-    for(j=0; path.path_array[j].x!=-1; j=j+2){
-        printf("c%d%d ", path.path_array[j].x, path.path_array[j].y);
+    printf("Starting at station %d with direction %d \n", station1, direction);
+    printf("Go straight... \n");
+    for(j=2; path.path_array[j + 2].x!=-1; j=j+2){
+        int row = (path.path_array[j].y - 2) / 2;
+        int column = (path.path_array[j].x - 2) / 2;
+        int next_row = (path.path_array[j + 2].y - 2) / 2;
+        int next_column = (path.path_array[j + 2].x - 2) / 2;
+        printf("c%d%d \n", row, column);
+        if(row - next_row == -1){
+            // Go south
+            if(direction == 3){
+                printf("Go left...");
+            }
+            else if(direction == 2){
+                printf("Go straight...");
+            }
+            else if(direction == 1){
+                printf("Go right...");
+            }
+            printf("\n");
+            direction = 2;
+        }
+        else if(row - next_row == 1){
+            // Go north
+            if(direction == 1){
+                printf("Go left...");
+            }
+            else if(direction == 0){
+                printf("Go straight...");
+            }
+            else if(direction == 3){
+                printf("Go right...");
+            }
+            printf("\n");
+            direction = 0;
+        }
+        else if(column - next_column == 1){
+            // Go west
+            if(direction == 0){
+                printf("Go left...");
+            }
+            else if(direction == 3){
+                printf("Go straight...");
+            }
+            else if(direction == 2){
+                printf("Go right...");
+            }
+            printf("\n");
+            direction = 3;
+        }
+        else if(column - next_column == -1){
+            // Go east
+            if(direction == 2){
+                printf("Go left...");
+            }
+            else if(direction == 1){
+                printf("Go straight...");
+            }
+            else if(direction == 0){
+                printf("Go right...");
+            }
+            printf("\n");
+            direction = 1;
+        }
         //prints the crossings of the path
     }
     printf("\n");
