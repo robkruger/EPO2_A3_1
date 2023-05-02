@@ -298,7 +298,18 @@ for(i=0; i<11; i++){
 //     struct cell end_cell = get_station(end_station);
 // }
 
+void gotoxy(int column, int line){
+    COORD coord;
+    coord.X = column;
+    coord.Y = line;
+    SetConsoleCursorPosition(
+        GetStdHandle( STD_OUTPUT_HANDLE ),
+        coord
+    );
+}
+
 void visualize_maze(){
+    // gotoxy(0,1);
     int i, j;
     for(j = 0; j < 13; j++){
         printf("-----");
@@ -448,11 +459,10 @@ int main(){
 
     initSio(hSerial);
 
-    // read_input();
-
-    writeByte(hSerial, 'A');
+    read_input();
 
     makeroute();
     visualize_maze();
+
     return 0;
 }
