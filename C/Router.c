@@ -298,87 +298,85 @@ struct path find_path(int start, int end){
 
 //this function gets the start and end stations+ ones in between, calls the getroute functions 
 //for two stations at one time, and thus outputs a route for as much stations that is needed.
-void makeroute(){
-int station1, station2, i, j;
-struct path path;
-for(i=0; i<11; i++){
-    if(stations[i+1] == -1){
-        break;
-        // when the input of list becomes -1, which means there are no more stations to visit,
-        // stop the function.
+void make_route(){
+    int station1, station2, i, j;
+    struct path path;
+    for(i = 0; i < 11; i++){
+        if(stations[i + 1] == -1){
+            break;
+            // when the input of list becomes -1, which means there are no more stations to visit,
+            // stop the function.
+        }
+        station1 = stations[i];
+        station2 = stations[i+1];
+        path = find_path(station1,station2);
+        printf("Starting at station %d with direction %d \n", station1, direction);
+        printf("Go straight... \n");
+        for(j = 2; path.path_array[j + 2].x != -1; j = j + 2){
+            int row = (path.path_array[j].y - 2) / 2;
+            int column = (path.path_array[j].x - 2) / 2;
+            int next_row = (path.path_array[j + 2].y - 2) / 2;
+            int next_column = (path.path_array[j + 2].x - 2) / 2;
+            printf("c%d%d \n", row, column);
+            if(row - next_row == -1){
+                // Go south
+                if(direction == 3){
+                    printf("Go left...");
+                }
+                else if(direction == 2){
+                    printf("Go straight...");
+                }
+                else if(direction == 1){
+                    printf("Go right...");
+                }
+                printf("\n");
+                direction = 2;
+            }
+            else if(row - next_row == 1){
+                // Go north
+                if(direction == 1){
+                    printf("Go left...");
+                }
+                else if(direction == 0){
+                    printf("Go straight...");
+                }
+                else if(direction == 3){
+                    printf("Go right...");
+                }
+                printf("\n");
+                direction = 0;
+            }
+            else if(column - next_column == 1){
+                // Go west
+                if(direction == 0){
+                    printf("Go left...");
+                }
+                else if(direction == 3){
+                    printf("Go straight...");
+                }
+                else if(direction == 2){
+                    printf("Go right...");
+                }
+                printf("\n");
+                direction = 3;
+            }
+            else if(column - next_column == -1){
+                // Go east
+                if(direction == 2){
+                    printf("Go left...");
+                }
+                else if(direction == 1){
+                    printf("Go straight...");
+                }
+                else if(direction == 0){
+                    printf("Go right...");
+                }
+                printf("\n");
+                direction = 1;
+            }
+        }
+        printf("\n");
     }
-    station1 = stations[i];
-    station2 = stations[i+1];
-    path = find_path(station1,station2);
-    printf("Starting at station %d with direction %d \n", station1, direction);
-    printf("Go straight... \n");
-    for(j=2; path.path_array[j + 2].x!=-1; j=j+2){
-        int row = (path.path_array[j].y - 2) / 2;
-        int column = (path.path_array[j].x - 2) / 2;
-        int next_row = (path.path_array[j + 2].y - 2) / 2;
-        int next_column = (path.path_array[j + 2].x - 2) / 2;
-        printf("c%d%d \n", row, column);
-        if(row - next_row == -1){
-            // Go south
-            if(direction == 3){
-                printf("Go left...");
-            }
-            else if(direction == 2){
-                printf("Go straight...");
-            }
-            else if(direction == 1){
-                printf("Go right...");
-            }
-            printf("\n");
-            direction = 2;
-        }
-        else if(row - next_row == 1){
-            // Go north
-            if(direction == 1){
-                printf("Go left...");
-            }
-            else if(direction == 0){
-                printf("Go straight...");
-            }
-            else if(direction == 3){
-                printf("Go right...");
-            }
-            printf("\n");
-            direction = 0;
-        }
-        else if(column - next_column == 1){
-            // Go west
-            if(direction == 0){
-                printf("Go left...");
-            }
-            else if(direction == 3){
-                printf("Go straight...");
-            }
-            else if(direction == 2){
-                printf("Go right...");
-            }
-            printf("\n");
-            direction = 3;
-        }
-        else if(column - next_column == -1){
-            // Go east
-            if(direction == 2){
-                printf("Go left...");
-            }
-            else if(direction == 1){
-                printf("Go straight...");
-            }
-            else if(direction == 0){
-                printf("Go right...");
-            }
-            printf("\n");
-            direction = 1;
-        }
-        //prints the crossings of the path
-    }
-    printf("\n");
-}
-
 }
 
 // Output the path
@@ -550,7 +548,7 @@ int main(){
 
     read_input();
 
-    makeroute();
+    make_route();
     visualize_maze();
 
     return 0;
