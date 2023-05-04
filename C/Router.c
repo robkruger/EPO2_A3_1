@@ -5,13 +5,22 @@
 #include <string.h>
 #include <Windows.h>
 
-#define COMPORT "COM2"
+#define COMPORT "COM3"
 #define BAUDRATE CBR_9600
 
+const int GRID_SIZE = 13;
+
+HANDLE hSerial;
+//these variables are used by checkifcomchanged function
+char lastrecievedbit[32] = "x";
+
 struct cell {
-    int v; // Value
-    int x, y; // Location in the maze
-    char name[8]; // Name, not used at the moment
+    // Value
+    int v; 
+    // Location in the maze
+    int x, y; 
+    // Name, not used at the moment
+    char name[8]; 
 };
 
 // Matrix represantation of the maze
@@ -381,6 +390,49 @@ void make_route(){
     }
 }
 
+//these functions can be called for the instructions to be send to the robot
+//also a handshake functionality is implementec
+void sendcommandtorobot(int command){
+    char character[32];
+    if(command==0){ 
+        //go forward
+        writeByte(hSerial, "A");
+        while(checkifcomchanged()==0 && character != "R"){
+            readByte(hSerial, character);
+            Sleep(5);
+            //this is only necessary if the error margin of recieved bytes is big.
+           // if(checkifcomchanged()==0 && readByte(hSerial, character) != "R"){
+           //     writeByte(hSerial, "A"); }
+        }
+    } else if (command==1){ // go left
+        writeByte(hSerial, "B");
+        while(checkifcomchanged()==0 && character != "S"){
+            readByte(hSerial, character);
+            Sleep(5);
+        }
+    } else if (command==2){ // go right
+        writeByte(hSerial, "C");
+        while(checkifcomchanged()==0 && character != "T"){
+            readByte(hSerial, character);
+            Sleep(5);
+        }
+    } else if (command==3){ // turn around
+        writeByte(hSerial, "D");
+        while(checkifcomchanged()==0 && character != "U"){
+            readByte(hSerial, character);
+            Sleep(5);
+        }
+    } else if (command==4){ // stop
+        writeByte(hSerial, "E");
+        while(checkifcomchanged()==0 && character != "V"){
+            readByte(hSerial, character);
+            Sleep(5);
+        }
+    }
+}
+
+
+
 // Output the path
 // void output(){
 //     struct cell starting_cell = get_station(starting_station);
@@ -445,6 +497,69 @@ void visualize_maze(){
     }
 }
 
+int *find_possible_neighbors(int i, int j){
+    // returns a 1D array for i,j that are possible neighbours
+
+    //allocate memory 4 x (i and j) = 8
+    int *n = (int *)malloc(4*2 * sizeof(int));
+    // initialise all to -1
+    for (int k =0; k < 8; k++) {
+        n[k] = -1;
+    }
+    // check indecies lie within the matrix and are unassigned (value = 0)
+    if (0 <= i-1){                  // LEFT
+        if (maze[i-1][j].v == 0) {
+            n[0] = i-1;
+            n[1] = j;
+        }
+    } 
+    if (i+1 <= GRID_SIZE){          // RIGHT
+        if (maze[i+1][j].v == 0) {
+            n[2] = i+1;
+            n[3] = j;
+        } 
+    }
+    if (0 <= j-1){                  // UP
+        if (maze[i][j-1].v == 0) {
+            n[4] = i;
+            n[5] = j-1;
+        } 
+    }
+    if (j+1 <= GRID_SIZE){          // DOWN
+        if (maze[i][j+1].v == 0) {
+            n[6] = i;
+            n[7] = j+1;
+        } 
+    } 
+    return n;
+}
+
+void lee_start_2_target(int start_i, int start_j,
+                        int target_i, int target_j){
+    int counter = 1;
+    int *neigbours;
+    maze[start_i][start_j].v = counter;
+
+
+    while (maze[target_i][target_j].v == 0) {
+        // increment the neigbours of all cells with value = counter:
+        for (int j=0; j<GRID_SIZE; j++){
+            for (int i=0; i<GRID_SIZE; i++){
+                if (maze[j][i].v == counter){
+                    neigbours = find_possible_neighbors(j, i);
+                    for (int k=0; k < 4; k++){
+                        if (neigbours[k*2] != -1){
+                            maze[neigbours[k*2]][neigbours[k*2+1]].v = counter+1;
+                        }
+                    }
+                    free(neigbours);
+                }
+            }
+        }
+        counter++;
+    }
+}
+
 //--------------------------------------------------------------
 // Function: initSio
 // Description: intializes the parameters as Baudrate, Bytesize, 
@@ -500,8 +615,26 @@ int readByte(HANDLE hSerial, char *buffRead) {
         printf("error reading byte from input buffer \n");
     }
     printf("Byte read from read buffer is: %c \n", buffRead[0]);
-    return(0);
+    return(buffRead[0]);
 }
+
+//this function checks if readByte changes, if it does combithaschanged will go to 1
+int checkifcomchanged(){
+    char currentbit[32];
+    int combithaschanged = 0;
+    int i;
+    readByte(hSerial, currentbit);
+    if(strcmp(lastrecievedbit, currentbit) == 0){
+        combithaschanged = 1;
+        for(i=0; i<32; i++){
+            lastrecievedbit[i] = currentbit[i];
+        }
+    } else {
+        combithaschanged = 0;
+    }
+    return(combithaschanged);
+}
+
 
 //--------------------------------------------------------------
 // Function: writeByte
@@ -523,9 +656,8 @@ int writeByte(HANDLE hSerial, char *buffWrite){
 
 int main(){
     srand(time(NULL));
-    initialize_maze_test();
-
-    HANDLE hSerial;
+    initialize_maze();
+    lee_start_2_target(0,4, 12,4);
 
     char byteBuffer[BUFSIZ+1];
 
@@ -552,9 +684,15 @@ int main(){
 
     //----------------------------------------------------------
     // Initialize the parameters of the COM port
+    initSio(hSerial);
     //----------------------------------------------------------
 
-    initSio(hSerial);
+    while(1){
+        char test[32];
+        readByte(hSerial, test);
+        printf("%c", test);
+        Sleep(50);
+    }
 
     read_input();
 
@@ -563,5 +701,7 @@ int main(){
         make_route();
     }
 
+
+    writeByte(hSerial, "E"); //at last, send stop byte to robot to get it to stop.
     return 0;
 }
