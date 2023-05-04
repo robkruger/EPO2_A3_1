@@ -8,15 +8,20 @@
 #define COMPORT "COM3"
 #define BAUDRATE CBR_9600
 
+const int GRID_SIZE = 13;
+
 HANDLE hSerial;
 //these variables are used by checkifcomchanged function
 char lastrecievedbit[32] = "x";
 
 
 struct cell {
-    int v; // Value
-    int x, y; // Location in the maze
-    char name[8]; // Name, not used at the moment
+    // Value
+    int v; 
+    // Location in the maze
+    int x, y; 
+    // Name, not used at the moment
+    char name[8]; 
 };
 
 // Matrix represantation of the maze
@@ -28,6 +33,9 @@ struct path {
 
 // Stations between which a path has to be found, -1 means there is no station.
 int stations[]= {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+
+// 0 = North, 1 = East, 2 = South, 3 = West
+int direction;
 
 // Returns the cell corresponding to the according station
 struct cell get_station(int station){
@@ -202,8 +210,20 @@ void initialize_maze_test(){
     maze[2][6].v = 5;
     maze[2][5].v = 6;
     maze[2][4].v = 7;
-    maze[1][4].v = 8;
-    maze[0][4].v = 9;
+    maze[3][4].v = 8;
+    maze[4][4].v = 9;
+    maze[4][3].v = 10;
+    maze[4][2].v = 11;
+    maze[5][2].v = 12;
+    maze[6][2].v = 13;
+    maze[6][3].v = 14;
+    maze[6][4].v = 15;
+    maze[7][4].v = 16;
+    maze[8][4].v = 17;
+    maze[8][3].v = 18;
+    maze[8][2].v = 19;
+    maze[8][1].v = 20;
+    maze[8][0].v = 21;
 }
 
 void initialize_maze(){
@@ -235,6 +255,18 @@ void initialize_maze(){
 
 // Find the shortest path from starting station to end station
 struct path find_path(int start, int end){
+    if(start == 1 || start == 2 || start == 3){
+        direction = 0;
+    }
+    else if(start == 4 || start == 5 || start == 6){
+        direction = 3;
+    }
+    else if(start == 7 || start == 8 || start == 9){
+        direction = 2;
+    }
+    else{
+        direction = 1;
+    }
     struct cell ending_cell = get_station(end);
     struct cell current_cell = get_station(start);
     struct path path_object;
@@ -276,25 +308,85 @@ struct path find_path(int start, int end){
 
 //this function gets the start and end stations+ ones in between, calls the getroute functions 
 //for two stations at one time, and thus outputs a route for as much stations that is needed.
-void makeroute(){
-int station1, station2, i, j;
-struct path path;
-for(i=0; i<11; i++){
-    if(stations[i+1] == -1){
-        break;
-        // when the input of list becomes -1, which means there are no more stations to visit,
-        // stop the function.
+void make_route(){
+    int station1, station2, i, j;
+    struct path path;
+    for(i = 0; i < 11; i++){
+        if(stations[i + 1] == -1){
+            break;
+            // when the input of list becomes -1, which means there are no more stations to visit,
+            // stop the function.
+        }
+        station1 = stations[i];
+        station2 = stations[i+1];
+        path = find_path(station1,station2);
+        printf("Starting at station %d with direction %d \n", station1, direction);
+        printf("Go straight... \n");
+        for(j = 2; path.path_array[j + 2].x != -1; j = j + 2){
+            int row = (path.path_array[j].y - 2) / 2;
+            int column = (path.path_array[j].x - 2) / 2;
+            int next_row = (path.path_array[j + 2].y - 2) / 2;
+            int next_column = (path.path_array[j + 2].x - 2) / 2;
+            printf("c%d%d \n", row, column);
+            if(row - next_row == -1){
+                // Go south
+                if(direction == 3){
+                    printf("Go left...");
+                }
+                else if(direction == 2){
+                    printf("Go straight...");
+                }
+                else if(direction == 1){
+                    printf("Go right...");
+                }
+                printf("\n");
+                direction = 2;
+            }
+            else if(row - next_row == 1){
+                // Go north
+                if(direction == 1){
+                    printf("Go left...");
+                }
+                else if(direction == 0){
+                    printf("Go straight...");
+                }
+                else if(direction == 3){
+                    printf("Go right...");
+                }
+                printf("\n");
+                direction = 0;
+            }
+            else if(column - next_column == 1){
+                // Go west
+                if(direction == 0){
+                    printf("Go left...");
+                }
+                else if(direction == 3){
+                    printf("Go straight...");
+                }
+                else if(direction == 2){
+                    printf("Go right...");
+                }
+                printf("\n");
+                direction = 3;
+            }
+            else if(column - next_column == -1){
+                // Go east
+                if(direction == 2){
+                    printf("Go left...");
+                }
+                else if(direction == 1){
+                    printf("Go straight...");
+                }
+                else if(direction == 0){
+                    printf("Go right...");
+                }
+                printf("\n");
+                direction = 1;
+            }
+        }
+        printf("\n");
     }
-    station1 = stations[i];
-    station2 = stations[i+1];
-    path = find_path(station1,station2);
-    for(j=0; path.path_array[j].x!=-1; j=j+2){
-        printf("c%d%d ", path.path_array[j].x, path.path_array[j].y);
-        //prints the crossings of the path
-    }
-    printf("\n");
-}
-
 }
 
 //these functions can be called for the instructions to be send to the robot
@@ -396,6 +488,69 @@ void visualize_maze(){
     }
 }
 
+int *find_possible_neighbors(int i, int j){
+    // returns a 1D array for i,j that are possible neighbours
+
+    //allocate memory 4 x (i and j) = 8
+    int *n = (int *)malloc(4*2 * sizeof(int));
+    // initialise all to -1
+    for (int k =0; k < 8; k++) {
+        n[k] = -1;
+    }
+    // check indecies lie within the matrix and are unassigned (value = 0)
+    if (0 <= i-1){                  // LEFT
+        if (maze[i-1][j].v == 0) {
+            n[0] = i-1;
+            n[1] = j;
+        }
+    } 
+    if (i+1 <= GRID_SIZE){          // RIGHT
+        if (maze[i+1][j].v == 0) {
+            n[2] = i+1;
+            n[3] = j;
+        } 
+    }
+    if (0 <= j-1){                  // UP
+        if (maze[i][j-1].v == 0) {
+            n[4] = i;
+            n[5] = j-1;
+        } 
+    }
+    if (j+1 <= GRID_SIZE){          // DOWN
+        if (maze[i][j+1].v == 0) {
+            n[6] = i;
+            n[7] = j+1;
+        } 
+    } 
+    return n;
+}
+
+void lee_start_2_target(int start_i, int start_j,
+                        int target_i, int target_j){
+    int counter = 1;
+    int *neigbours;
+    maze[start_i][start_j].v = counter;
+
+
+    while (maze[target_i][target_j].v == 0) {
+        // increment the neigbours of all cells with value = counter:
+        for (int j=0; j<GRID_SIZE; j++){
+            for (int i=0; i<GRID_SIZE; i++){
+                if (maze[j][i].v == counter){
+                    neigbours = find_possible_neighbors(j, i);
+                    for (int k=0; k < 4; k++){
+                        if (neigbours[k*2] != -1){
+                            maze[neigbours[k*2]][neigbours[k*2+1]].v = counter+1;
+                        }
+                    }
+                    free(neigbours);
+                }
+            }
+        }
+        counter++;
+    }
+}
+
 //--------------------------------------------------------------
 // Function: initSio
 // Description: intializes the parameters as Baudrate, Bytesize, 
@@ -492,7 +647,8 @@ int writeByte(HANDLE hSerial, char *buffWrite){
 
 int main(){
     srand(time(NULL));
-    initialize_maze_test();
+    initialize_maze();
+    lee_start_2_target(0,4, 12,4);
 
     char byteBuffer[BUFSIZ+1];
 
@@ -531,7 +687,7 @@ int main(){
 
     read_input();
 
-    makeroute();
+    make_route();
     visualize_maze();
 
 
