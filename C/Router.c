@@ -13,6 +13,7 @@ const int GRID_SIZE = 13;
 HANDLE hSerial;
 //these variables are used by com_changed function
 char lastrecievedbit[32] = "x";
+int start_station, end_station;
 
 struct cell {
     // Value
@@ -299,7 +300,8 @@ void read_input(){
     while(j<11 && scanf("%d%1[^\n]s", &stations[j], &discard) == 2){
         j++;
     }
-
+    start_station = stations[0];
+    end_station = stations[1];
 }
 
 // Initialize the maze with random values
@@ -362,6 +364,55 @@ void initialize_maze_test(){
     maze[8][2].v = 19;
     maze[8][1].v = 20;
     maze[8][0].v = 21;
+}
+
+//this function will update the robot position in the maze accordingly to the command.
+void update_robot_position(int command){
+    if (command = 0){
+        if(robot.direction = 0){
+            robot.y = robot.y - 1;
+        } else if (robot.direction = 1){
+            robot.x = robot.x + 1;
+        } else if (robot.direction = 2){
+            robot.y = robot.y + 1;
+        } else if (robot.direction = 3){
+            robot.x = robot.x - 1;
+        }
+    } else if (command = 1){
+        if(robot.direction = 0){
+            robot.y = robot.y - 1;
+            robot.direction = 3;
+        } else if (robot.direction = 1){
+            robot.x = robot.x + 1;
+            robot.direction = 0;
+        } else if (robot.direction = 2){
+            robot.y = robot.y + 1;
+            robot.direction = 1;
+        } else if (robot.direction = 3){
+            robot.x = robot.x - 1;
+            robot.direction = 2;
+        }
+    } else if (command = 2){
+        if(robot.direction = 0){
+            robot.y = robot.y - 1;
+        } else if (robot.direction = 1){
+            robot.x = robot.x + 1;
+        } else if (robot.direction = 2){
+            robot.y = robot.y + 1;
+        } else if (robot.direction = 3){
+            robot.x = robot.x - 1;
+        }
+    } else if (command = 3){
+        if(robot.direction = 0){
+            robot.y = robot.y - 1;
+        } else if (robot.direction = 1){
+            robot.x = robot.x + 1;
+        } else if (robot.direction = 2){
+            robot.y = robot.y + 1;
+        } else if (robot.direction = 3){
+            robot.x = robot.x - 1;
+        }
+    }
 }
 
 void initialize_maze(){
@@ -450,101 +501,95 @@ struct path find_path(int start, int end){
 
 //this function gets the start and end stations+ ones in between, calls the getroute functions 
 //for two stations at one time, and thus outputs a route for as much stations that is needed.
-void make_route(){
+void make_route(int station_index){
     int station1, station2, i, j;
+    i = station_index;
     struct path path;
-    for(i = 0; i < 11; i++){
-        if(stations[i + 1] == -1){
-            break;
-            // when the input of list becomes -1, which means there are no more stations to visit,
-            // stop the function.
-        }
-        int k;
-        for(k = 0; k < 100; k++){
-            commands[k] = -1;
-        }
-        station1 = stations[i];
-        station2 = stations[i+1];
-        path = find_path(station1,station2);
+    int k;
+    for(k = 0; k < 100; k++){
+        commands[k] = -1;
+    }
+    start_station = stations[i];
+    end_station = stations[i+1];
+    path = find_path(station1,station2);
+    char buf[100];
+    snprintf(buf, 100, "Starting at station %d with direction %d", station1, direction);
+    debug(buf);
+    debug("Go straight...");
+    k = 0;
+    for(j = 2; path.path_array[j + 2].x != -1; j = j + 2){
+        int row = (path.path_array[j].y - 2) / 2;
+        int column = (path.path_array[j].x - 2) / 2;
+        int next_row = (path.path_array[j + 2].y - 2) / 2;
+        int next_column = (path.path_array[j + 2].x - 2) / 2;
         char buf[100];
-        snprintf(buf, 100, "Starting at station %d with direction %d", station1, direction);
+        snprintf(buf, 100, "c%d%d", row, column);
         debug(buf);
-        debug("Go straight...");
-        k = 0;
-        for(j = 2; path.path_array[j + 2].x != -1; j = j + 2){
-            int row = (path.path_array[j].y - 2) / 2;
-            int column = (path.path_array[j].x - 2) / 2;
-            int next_row = (path.path_array[j + 2].y - 2) / 2;
-            int next_column = (path.path_array[j + 2].x - 2) / 2;
-            char buf[100];
-            snprintf(buf, 100, "c%d%d", row, column);
-            debug(buf);
-            if(row - next_row == -1){
-                // Go south
-                if(direction == 3){
-                    debug("Go left...");
-                    commands[k] = 1;
-                }
-                else if(direction == 2){
-                    debug("Go straight...");
-                    commands[k] = 0;
-                }
-                else if(direction == 1){
-                    debug("Go right...");
-                    commands[k] = 2;
-                }
-                direction = 2;
+        if(row - next_row == -1){
+            // Go south
+            if(direction == 3){
+                debug("Go left...");
+                commands[k] = 1;
             }
-            else if(row - next_row == 1){
-                // Go north
-                if(direction == 1){
-                    debug("Go left...");
-                    commands[k] = 1;
-                }
-                else if(direction == 0){
-                    debug("Go straight...");
-                    commands[k] = 0;
-                }
-                else if(direction == 3){
-                    debug("Go right...");
-                    commands[k] = 2;
-                }
-                direction = 0;
+            else if(direction == 2){
+                debug("Go straight...");
+                commands[k] = 0;
             }
-            else if(column - next_column == 1){
-                // Go west
-                if(direction == 0){
-                    debug("Go left...");
-                    commands[k] = 1;
-                }
-                else if(direction == 3){
-                    debug("Go straight...");
-                    commands[k] = 0;
-                }
-                else if(direction == 2){
-                    debug("Go right...");
-                    commands[k] = 2;
-                }
-                direction = 3;
+            else if(direction == 1){
+                debug("Go right...");
+                commands[k] = 2;
             }
-            else if(column - next_column == -1){
-                // Go east
-                if(direction == 2){
-                    debug("Go left...");
-                    commands[k] = 1;
-                }
-                else if(direction == 1){
-                    debug("Go straight...");
-                    commands[k] = 0;
-                }
-                else if(direction == 0){
-                    debug("Go right...");
-                    commands[k] = 2;
-                }
-                direction = 1;
-            }
-            k += 1;
+            direction = 2;
         }
+        else if(row - next_row == 1){
+            // Go north
+            if(direction == 1){
+                debug("Go left...");
+                commands[k] = 1;
+            }
+            else if(direction == 0){
+                debug("Go straight...");
+                commands[k] = 0;
+            }
+            else if(direction == 3){
+                debug("Go right...");
+                commands[k] = 2;
+            }
+            direction = 0;
+        }
+        else if(column - next_column == 1){
+            // Go west
+            if(direction == 0){
+                debug("Go left...");
+                commands[k] = 1;
+            }
+            else if(direction == 3){
+                debug("Go straight...");
+                commands[k] = 0;
+            }
+            else if(direction == 2){
+                debug("Go right...");
+                commands[k] = 2;
+            }
+            direction = 3;
+        }
+        else if(column - next_column == -1){
+            // Go east
+            if(direction == 2){
+                debug("Go left...");
+                commands[k] = 1;
+            }
+            else if(direction == 1){
+                debug("Go straight...");
+                commands[k] = 0;
+            }
+            else if(direction == 0){
+                debug("Go right...");
+                commands[k] = 2;
+            }
+            direction = 1;
+        }
+        k += 1;
     }
 }
 
@@ -593,76 +638,26 @@ void send_command_to_robot(int command){
     }
 }
 
+// listens to response from robot and returns what happened, 0 means unknown command, 1 means robot successfully completed command,
+// 2 means it found a mine and a new path needs to be calculated.
 int listen_to_robot(int route_index){
     char message[32];
     while(!com_changed()){
         readByte(hSerial, message);
         Sleep(5);
     }
-    //if(strcmp(message, "L")){
-    //     update_robot_position(commands[route_index])
-    // }
-    //else
-    if(strcmp(message, "Q")){
+    if(!strcmp(message, "Q")){
         found_mine(robot.x, robot.y, robot.direction);
+        robot.direction = (robot.direction + 2) % 4;
+        return 2;
     }
-    else if (strcmp(message, "X"))
+    else if (!strcmp(message, "X"))
     {
-        
+        update_robot_position(commands[route_index]);
+        return 1;
     }
-    
+    return 0;
 }
-
-//this function will update the robot position in the maze accordingly to the command.
-void update_robot_position(int command){
-    if (command = 0){
-        if(robot.direction = 0){
-            robot.y = robot.y - 1;
-        } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
-        } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
-        } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
-        }
-    } else if (command = 1){
-        if(robot.direction = 0){
-            robot.y = robot.y - 1;
-            robot.direction = 3;
-        } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
-            robot.direction = 0;
-        } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
-            robot.direction = 1;
-        } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
-            robot.direction = 2;
-        }
-    } else if (command = 2){
-        if(robot.direction = 0){
-            robot.y = robot.y - 1;
-        } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
-        } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
-        } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
-        }
-    } else if (command = 3){
-        if(robot.direction = 0){
-            robot.y = robot.y - 1;
-        } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
-        } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
-        } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
-        }
-    }
-
-}
-
 
 void visualize_maze(){
     gotoxy(0,1);
@@ -785,12 +780,10 @@ void lee_start_2_target(int start_i, int start_j,
 int main(){
     srand(time(NULL));
 
-    initialize_maze_test();
+    initialize_maze();
 
     robot.x = 0;
     robot.y = 4;
-
-    // lee_start_2_target(robot.x, robot.y, 12, 4);
 
     char byteBuffer[BUFSIZ+1];
 
@@ -822,16 +815,36 @@ int main(){
 
     read_input();
 
+    struct cell station = get_station(start_station);
+    lee_start_2_target(robot.x, robot.y, station.x, station.y);
+
     visualize_maze();
-    make_route();
 
 
     //this piece of code will send the commands to the robot
-    int i = 0;
-    char character[32];
-    while(commands[i+1] != -1){ //loop while there are actually commands
-        sendcommandtorobot(commands[i]);
-
+    int n = 0;
+    while(n < 12){
+        if(stations[n + 1] == -1){
+            break;
+        }
+        make_route(n);
+        int i = 0;
+        int response;
+        char character[32];
+        while(commands[i+1] != -1){ //loop while there are actually commands
+            send_command_to_robot(commands[i]);
+            response = listen_to_robot(i);
+            if(response == 0){
+                perror("Unknown command send by robot!");
+            }
+            else if(response == 2){
+                initialize_maze();
+                struct cell station = get_station(end_station);
+                lee_start_2_target(robot.x, robot.y, station.x, station.y);
+                make_route(n);
+            }
+            i++;
+        }
     }
 
     writeByte(hSerial, "E"); //at last, send stop byte to robot to get it to stop.
