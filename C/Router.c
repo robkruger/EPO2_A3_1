@@ -11,8 +11,9 @@
 const int GRID_SIZE = 13;
 
 HANDLE hSerial;
-//these variables are used by com_changed function
+//variables
 char lastrecievedbit[32] = "x";
+int start_station, end_station;
 
 struct cell {
     // Value
@@ -435,7 +436,7 @@ struct path find_path(int start, int end){
 //this function gets the start and end stations+ ones in between, calls the getroute functions 
 //for two stations at one time, and thus outputs a route for as much stations that is needed.
 void make_route(){
-    int station1, station2, i, j;
+    int i, j;
     struct path path;
     for(i = 0; i < 11; i++){
         if(stations[i + 1] == -1){
@@ -447,11 +448,11 @@ void make_route(){
         for(k = 0; k < 100; k++){
             commands[k] = -1;
         }
-        station1 = stations[i];
-        station2 = stations[i+1];
-        path = find_path(station1,station2);
+        start_station = stations[i];
+        end_station = stations[i+1];
+        path = find_path(start_station,end_station);
         char buf[100];
-        snprintf(buf, 100, "Starting at station %d with direction %d", station1, direction);
+        snprintf(buf, 100, "Starting at station %d with direction %d", start_station, direction);
         debug(buf);
         debug("Go straight...");
         k = 0;
@@ -794,7 +795,7 @@ int main(){
     int i = 0;
     char character[32];
     while(commands[i+1] != -1){ //loop while there are actually commands
-        sendcommandtorobot(commands[i]);
+        send_command_to_robot(commands[i]);
 
     }
 
