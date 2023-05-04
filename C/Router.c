@@ -399,7 +399,7 @@ void gotoxy(int column, int line){
 
 void debug(char *message){
     gotoxy(0, 28);
-    printf("                                                              ");
+    printf("\33[2K\r");
     gotoxy(0, 28);
     printf(message);
     Sleep(500);
