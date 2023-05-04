@@ -40,6 +40,7 @@ int direction;
 
 struct robot {
     int x, y;
+    int direction;
 };
 
 struct robot robot;
@@ -223,6 +224,22 @@ void change_edge(int i, int j, int direction, int v){
         k -= 1;
     }
     maze[k][l].v = v;
+}
+
+void found_mine(int x, int y, int direction){
+    if(direction == 0){
+        y -= 1;
+    }
+    else if(direction == 1){
+        x += 1;
+    }
+    else if(direction == 2){
+        y += 1;
+    }
+    else if(direction == 3){
+        x -= 1;
+    }
+    maze[x][y].v = -1;
 }
 
 int cells_equal(struct cell cell_1, struct cell cell_2){
@@ -531,7 +548,7 @@ void make_route(){
 //also a handshake functionality is implementec
 void send_command_to_robot(int command){
     char character[32];
-    if(command==0){ 
+    if(command == 0){ 
         //go forward
         writeByte(hSerial, "A");
         while(com_changed() == 0 && character != "R"){
@@ -570,6 +587,26 @@ void send_command_to_robot(int command){
             Sleep(5);
         }
     }
+}
+
+int listen_to_robot(int route_index){
+    char message[32];
+    while(!com_changed()){
+        readByte(hSerial, message);
+        Sleep(5);
+    }
+    //if(strcmp(message, "L")){
+    //     update_robot_position(commands[route_index])
+    // }
+    //else
+    if(strcmp(message, "Q")){
+        found_mine(robot.x, robot.y, robot.direction);
+    }
+    else if (strcmp(message, "X"))
+    {
+        
+    }
+    
 }
 
 void visualize_maze(){
