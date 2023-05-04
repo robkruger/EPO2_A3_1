@@ -3,6 +3,10 @@
 #include <math.h>
 #include <time.h>
 #include <string.h>
+#include <Windows.h>
+
+#define COMPORT "COM2"
+#define BAUDRATE CBR_9600
 
 const int GRID_SIZE = 13;
 
@@ -22,9 +26,11 @@ struct path {
     struct cell path_array[100];
 };
 
-// Stations between which a path has to be found
-int starting_station = 0;
-int end_station = 0;
+// Stations between which a path has to be found, -1 means there is no station.
+int stations[]= {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+
+// 0 = North, 1 = East, 2 = South, 3 = West
+int direction;
 
 // Returns the cell corresponding to the according station
 struct cell get_station(int station){
@@ -69,47 +75,28 @@ struct cell get_station(int station){
 // Returns cell corresponding to the according crossing
 struct cell get_crossing(int i, int j){
     int k, l;
-    k = 2 + i * 2;
-    l = 2 + j * 2;
+    k = 2 + j * 2;
+    l = 2 + i * 2;
     return maze[k][l];
 }
 
 // Returns cell corresponding to the according edge
 // 0 - south, 1 - east, 2 - north, 3 - west
-struct cell get_edge(int i, int j, int direction){
-    int k, l;
-    k = 2 + i * 2;
-    l = 2 + j * 2;
-    if(direction == 0){
-        k += 1;
-    }
-    else if(direction == 1){
-        l -= 1;
-    }
-    else if(direction == 2){
-        k -= 1;
-    }
-    else if(direction == 3){
-        l += 1;
-    }
-    return maze[k][l];
-}
-
 void change_edge(int i, int j, int direction, int v){
     int k, l;
-    k = 2 + i * 2;
-    l = 2 + j * 2;
+    k = 2 + j * 2;
+    l = 2 + i * 2;
     if(direction == 0){
-        k += 1;
+        l += 1;
     }
     else if(direction == 1){
-        l -= 1;
+        k += 1;
     }
     else if(direction == 2){
-        k -= 1;
+        l -= 1;
     }
     else if(direction == 3){
-        l += 1;
+        k -= 1;
     }
     maze[k][l].v = v;
 }
@@ -137,6 +124,40 @@ void yellow(){
 void reset(){
   printf("\033[0m");
 }
+
+void read_input(){
+    int numofblock, i, j, k, ci, cj, dir_n; //variables
+    char dir_l;
+    j = 0;
+    //scans for number of blockades
+    scanf("%i", &numofblock);
+    for(i=0; i<numofblock; i++){ //loops scan for blockade info, runs for amount of inputs
+        scanf("%i %i %c", &ci,&cj,&dir_l);
+        //make dir_n the number corresponding to direction
+        if (dir_l == 's'){
+            dir_n = 0;
+        }
+        else if (dir_l == 'w'){
+            dir_n = 3;
+        }
+        else if (dir_l == 'n'){
+            dir_n = 2;
+        }
+        else {
+            dir_n = 1;
+        }
+        //function to get the respective edges and change them
+        change_edge(ci, cj, dir_n, -1);
+    }
+    //scan for input stations, stop when newline  is detected
+    char discard;
+    while(j<11 && scanf("%d%1[^\n]s", &stations[j], &discard) == 2){
+        j++;
+    }
+
+}
+
+
 
 // Initialize the maze with random values
 void initialize_maze_random(){
@@ -184,8 +205,20 @@ void initialize_maze_test(){
     maze[2][6].v = 5;
     maze[2][5].v = 6;
     maze[2][4].v = 7;
-    maze[1][4].v = 8;
-    maze[0][4].v = 9;
+    maze[3][4].v = 8;
+    maze[4][4].v = 9;
+    maze[4][3].v = 10;
+    maze[4][2].v = 11;
+    maze[5][2].v = 12;
+    maze[6][2].v = 13;
+    maze[6][3].v = 14;
+    maze[6][4].v = 15;
+    maze[7][4].v = 16;
+    maze[8][4].v = 17;
+    maze[8][3].v = 18;
+    maze[8][2].v = 19;
+    maze[8][1].v = 20;
+    maze[8][0].v = 21;
 }
 
 void initialize_maze(){
@@ -217,9 +250,26 @@ void initialize_maze(){
 
 // Find the shortest path from starting station to end station
 struct path find_path(int start, int end){
+    if(start == 1 || start == 2 || start == 3){
+        direction = 0;
+    }
+    else if(start == 4 || start == 5 || start == 6){
+        direction = 3;
+    }
+    else if(start == 7 || start == 8 || start == 9){
+        direction = 2;
+    }
+    else{
+        direction = 1;
+    }
     struct cell ending_cell = get_station(end);
     struct cell current_cell = get_station(start);
     struct path path_object;
+    int j;
+    for(j=0; j<100; j++){
+        path_object.path_array[j].x = -1;
+        path_object.path_array[j].y = -1;
+    }
 
     int i = 0;
     while(!cells_equal(current_cell, ending_cell)){
@@ -251,13 +301,107 @@ struct path find_path(int start, int end){
     return path_object;
 }
 
+//this function gets the start and end stations+ ones in between, calls the getroute functions 
+//for two stations at one time, and thus outputs a route for as much stations that is needed.
+void make_route(){
+    int station1, station2, i, j;
+    struct path path;
+    for(i = 0; i < 11; i++){
+        if(stations[i + 1] == -1){
+            break;
+            // when the input of list becomes -1, which means there are no more stations to visit,
+            // stop the function.
+        }
+        station1 = stations[i];
+        station2 = stations[i+1];
+        path = find_path(station1,station2);
+        printf("Starting at station %d with direction %d \n", station1, direction);
+        printf("Go straight... \n");
+        for(j = 2; path.path_array[j + 2].x != -1; j = j + 2){
+            int row = (path.path_array[j].y - 2) / 2;
+            int column = (path.path_array[j].x - 2) / 2;
+            int next_row = (path.path_array[j + 2].y - 2) / 2;
+            int next_column = (path.path_array[j + 2].x - 2) / 2;
+            printf("c%d%d \n", row, column);
+            if(row - next_row == -1){
+                // Go south
+                if(direction == 3){
+                    printf("Go left...");
+                }
+                else if(direction == 2){
+                    printf("Go straight...");
+                }
+                else if(direction == 1){
+                    printf("Go right...");
+                }
+                printf("\n");
+                direction = 2;
+            }
+            else if(row - next_row == 1){
+                // Go north
+                if(direction == 1){
+                    printf("Go left...");
+                }
+                else if(direction == 0){
+                    printf("Go straight...");
+                }
+                else if(direction == 3){
+                    printf("Go right...");
+                }
+                printf("\n");
+                direction = 0;
+            }
+            else if(column - next_column == 1){
+                // Go west
+                if(direction == 0){
+                    printf("Go left...");
+                }
+                else if(direction == 3){
+                    printf("Go straight...");
+                }
+                else if(direction == 2){
+                    printf("Go right...");
+                }
+                printf("\n");
+                direction = 3;
+            }
+            else if(column - next_column == -1){
+                // Go east
+                if(direction == 2){
+                    printf("Go left...");
+                }
+                else if(direction == 1){
+                    printf("Go straight...");
+                }
+                else if(direction == 0){
+                    printf("Go right...");
+                }
+                printf("\n");
+                direction = 1;
+            }
+        }
+        printf("\n");
+    }
+}
+
 // Output the path
 // void output(){
 //     struct cell starting_cell = get_station(starting_station);
 //     struct cell end_cell = get_station(end_station);
 // }
 
+void gotoxy(int column, int line){
+    COORD coord;
+    coord.X = column;
+    coord.Y = line;
+    SetConsoleCursorPosition(
+        GetStdHandle( STD_OUTPUT_HANDLE ),
+        coord
+    );
+}
+
 void visualize_maze(){
+    // gotoxy(0,1);
     int i, j;
     for(j = 0; j < 13; j++){
         printf("-----");
@@ -359,12 +503,121 @@ void lee_start_2_target(int start_i, int start_j,
     }
     
 
+//--------------------------------------------------------------
+// Function: initSio
+// Description: intializes the parameters as Baudrate, Bytesize, 
+//           Stopbits, Parity and Timeoutparameters of
+//           the COM port
+//--------------------------------------------------------------
+void initSio(HANDLE hSerial){
+
+    COMMTIMEOUTS timeouts ={0};
+    DCB dcbSerialParams = {0};
+
+    dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
+
+    if (!GetCommState(hSerial, &dcbSerialParams)) {
+        //error getting state
+        printf("error getting state \n");
+    }
+
+    dcbSerialParams.BaudRate = BAUDRATE;
+    dcbSerialParams.ByteSize = 8;
+    dcbSerialParams.StopBits = ONESTOPBIT;
+    dcbSerialParams.Parity   = NOPARITY;
+
+    if(!SetCommState(hSerial, &dcbSerialParams)){
+        //error setting serial port state
+        printf("error setting state \n");
+    }
+
+    timeouts.ReadIntervalTimeout = 50;
+    timeouts.ReadTotalTimeoutConstant = 50;
+    timeouts.ReadTotalTimeoutMultiplier = 10;
+
+    timeouts.WriteTotalTimeoutConstant = 50;
+    timeouts.WriteTotalTimeoutMultiplier = 10;
+
+    if(!SetCommTimeouts(hSerial, &timeouts)){
+    //error occureed. Inform user
+        printf("error setting timeout state \n");
+    }
+}
+
+//--------------------------------------------------------------
+// Function: readByte
+// Description: reads a single byte from the COM port into
+//              buffer buffRead
+//--------------------------------------------------------------
+int readByte(HANDLE hSerial, char *buffRead) {
+
+    DWORD dwBytesRead = 0;
+
+    if (!ReadFile(hSerial, buffRead, 1, &dwBytesRead, NULL))
+    {
+        printf("error reading byte from input buffer \n");
+    }
+    printf("Byte read from read buffer is: %c \n", buffRead[0]);
+    return(0);
+}
+
+//--------------------------------------------------------------
+// Function: writeByte
+// Description: writes a single byte stored in buffRead to
+//              the COM port 
+//--------------------------------------------------------------
+int writeByte(HANDLE hSerial, char *buffWrite){
+
+    DWORD dwBytesWritten = 0;
+
+    if (!WriteFile(hSerial, buffWrite, 1, &dwBytesWritten, NULL))
+    {
+        printf("error writing byte to output buffer \n");
+    }
+    printf("Byte written to write buffer is: %c \n", buffWrite[0]);
+
+    return(0);
 }
 
 int main(){
     srand(time(NULL));
     initialize_maze();
     lee_start_2_target(0,4, 12,4);
+
+    HANDLE hSerial;
+
+    char byteBuffer[BUFSIZ+1];
+
+    //----------------------------------------------------------
+    // Open COMPORT for reading and writing
+    //----------------------------------------------------------
+    hSerial = CreateFile(COMPORT,
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        0
+    );
+
+    if(hSerial == INVALID_HANDLE_VALUE){
+        if(GetLastError()== ERROR_FILE_NOT_FOUND){
+            //serial port does not exist. Inform user.
+            printf(" serial port does not exist \n");
+        }
+        //some other error occurred. Inform user.
+        printf(" some other error occured. Inform user.\n");
+    }
+
+    //----------------------------------------------------------
+    // Initialize the parameters of the COM port
+    //----------------------------------------------------------
+
+    initSio(hSerial);
+
+    read_input();
+
+    make_route();
     visualize_maze();
 
     return 0;
