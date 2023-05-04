@@ -152,8 +152,6 @@ void read_input(){
 
 }
 
-
-
 // Initialize the maze with random values
 void initialize_maze_random(){
     int i, j;
@@ -310,72 +308,76 @@ void make_route(){
         station1 = stations[i];
         station2 = stations[i+1];
         path = find_path(station1,station2);
-        printf("Starting at station %d with direction %d \n", station1, direction);
-        printf("Go straight... \n");
+        char buf[100];
+        snprintf(buf, 100, "Starting at station %d with direction %d \n", station1, direction);
+        debug(buf);
+        debug("Go straight... \n");
         for(j = 2; path.path_array[j + 2].x != -1; j = j + 2){
             int row = (path.path_array[j].y - 2) / 2;
             int column = (path.path_array[j].x - 2) / 2;
             int next_row = (path.path_array[j + 2].y - 2) / 2;
             int next_column = (path.path_array[j + 2].x - 2) / 2;
-            printf("c%d%d \n", row, column);
+            char buf[100];
+            snprintf(buf, 100, "c%d%d \n", row, column);
+            debug(buf);
             if(row - next_row == -1){
                 // Go south
                 if(direction == 3){
-                    printf("Go left...");
+                    debug("Go left...");
                 }
                 else if(direction == 2){
-                    printf("Go straight...");
+                    debug("Go straight...");
                 }
                 else if(direction == 1){
-                    printf("Go right...");
+                    debug("Go right...");
                 }
-                printf("\n");
+                debug("\n");
                 direction = 2;
             }
             else if(row - next_row == 1){
                 // Go north
                 if(direction == 1){
-                    printf("Go left...");
+                    debug("Go left...");
                 }
                 else if(direction == 0){
-                    printf("Go straight...");
+                    debug("Go straight...");
                 }
                 else if(direction == 3){
-                    printf("Go right...");
+                    debug("Go right...");
                 }
-                printf("\n");
+                debug("\n");
                 direction = 0;
             }
             else if(column - next_column == 1){
                 // Go west
                 if(direction == 0){
-                    printf("Go left...");
+                    debug("Go left...");
                 }
                 else if(direction == 3){
-                    printf("Go straight...");
+                    debug("Go straight...");
                 }
                 else if(direction == 2){
-                    printf("Go right...");
+                    debug("Go right...");
                 }
-                printf("\n");
+                debug("\n");
                 direction = 3;
             }
             else if(column - next_column == -1){
                 // Go east
                 if(direction == 2){
-                    printf("Go left...");
+                    debug("Go left...");
                 }
                 else if(direction == 1){
-                    printf("Go straight...");
+                    debug("Go straight...");
                 }
                 else if(direction == 0){
-                    printf("Go right...");
+                    debug("Go right...");
                 }
-                printf("\n");
+                debug("\n");
                 direction = 1;
             }
         }
-        printf("\n");
+        debug("\n");
     }
 }
 
@@ -395,8 +397,16 @@ void gotoxy(int column, int line){
     );
 }
 
+void debug(char *message){
+    gotoxy(0, 28);
+    printf("                                                              ");
+    gotoxy(0, 28);
+    printf(message);
+    Sleep(500);
+}
+
 void visualize_maze(){
-    // gotoxy(0,1);
+    gotoxy(0,1);
     int i, j;
     for(j = 0; j < 13; j++){
         printf("-----");
@@ -548,8 +558,10 @@ int main(){
 
     read_input();
 
-    make_route();
-    visualize_maze();
+    while(1){
+        visualize_maze();
+        make_route();
+    }
 
     return 0;
 }
