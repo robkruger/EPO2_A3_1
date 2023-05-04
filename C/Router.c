@@ -5,7 +5,7 @@
 #include <string.h>
 #include <Windows.h>
 
-#define COMPORT "COM3"
+#define COMPORT "COM2"
 #define BAUDRATE CBR_9600
 
 const int GRID_SIZE = 13;
@@ -30,11 +30,131 @@ struct path {
     struct cell path_array[100];
 };
 
+int commands[100];
+
 // Stations between which a path has to be found, -1 means there is no station.
 int stations[]= {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 
 // 0 = North, 1 = East, 2 = South, 3 = West
 int direction;
+
+struct robot {
+    int x, y;
+};
+
+struct robot robot;
+
+void gotoxy(int column, int line){
+    COORD coord;
+    coord.X = column;
+    coord.Y = line;
+    SetConsoleCursorPosition(
+        GetStdHandle( STD_OUTPUT_HANDLE ),
+        coord
+    );
+}
+
+void debug(char *message){
+    gotoxy(0, 28);
+    printf("\33[2K\r");
+    gotoxy(0, 28);
+    printf(message);
+    Sleep(500);
+}
+
+//--------------------------------------------------------------
+// Function: initSio
+// Description: intializes the parameters as Baudrate, Bytesize, 
+//           Stopbits, Parity and Timeoutparameters of
+//           the COM port
+//--------------------------------------------------------------
+void initSio(HANDLE hSerial){
+
+    COMMTIMEOUTS timeouts ={0};
+    DCB dcbSerialParams = {0};
+
+    dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
+
+    if (!GetCommState(hSerial, &dcbSerialParams)) {
+        //error getting state
+        printf("error getting state \n");
+    }
+
+    dcbSerialParams.BaudRate = BAUDRATE;
+    dcbSerialParams.ByteSize = 8;
+    dcbSerialParams.StopBits = ONESTOPBIT;
+    dcbSerialParams.Parity   = NOPARITY;
+
+    if(!SetCommState(hSerial, &dcbSerialParams)){
+        //error setting serial port state
+        printf("error setting state \n");
+    }
+
+    timeouts.ReadIntervalTimeout = 50;
+    timeouts.ReadTotalTimeoutConstant = 50;
+    timeouts.ReadTotalTimeoutMultiplier = 10;
+
+    timeouts.WriteTotalTimeoutConstant = 50;
+    timeouts.WriteTotalTimeoutMultiplier = 10;
+
+    if(!SetCommTimeouts(hSerial, &timeouts)){
+    //error occureed. Inform user
+        printf("error setting timeout state \n");
+    }
+}
+
+//--------------------------------------------------------------
+// Function: readByte
+// Description: reads a single byte from the COM port into
+//              buffer buffRead
+//--------------------------------------------------------------
+int readByte(HANDLE hSerial, char *buffRead) {
+
+    DWORD dwBytesRead = 0;
+
+    if (!ReadFile(hSerial, buffRead, 1, &dwBytesRead, NULL))
+    {
+        printf("error reading byte from input buffer \n");
+    }
+    printf("Byte read from read buffer is: %c \n", buffRead[0]);
+    return(buffRead[0]);
+}
+
+//this function checks if readByte changes, if it does combithaschanged will go to 1
+int checkifcomchanged(){
+    char currentbit[32];
+    int combithaschanged = 0;
+    int i;
+    readByte(hSerial, currentbit);
+    if(strcmp(lastrecievedbit, currentbit) == 0){
+        combithaschanged = 1;
+        for(i=0; i<32; i++){
+            lastrecievedbit[i] = currentbit[i];
+        }
+    } else {
+        combithaschanged = 0;
+    }
+    return(combithaschanged);
+}
+
+
+//--------------------------------------------------------------
+// Function: writeByte
+// Description: writes a single byte stored in buffRead to
+//              the COM port 
+//--------------------------------------------------------------
+int writeByte(HANDLE hSerial, char *buffWrite){
+
+    DWORD dwBytesWritten = 0;
+
+    if (!WriteFile(hSerial, buffWrite, 1, &dwBytesWritten, NULL))
+    {
+        printf("error writing byte to output buffer \n");
+    }
+    printf("Byte written to write buffer is: %c \n", buffWrite[0]);
+
+    return(0);
+}
 
 // Returns the cell corresponding to the according station
 struct cell get_station(int station){
@@ -123,6 +243,10 @@ void green(){
 
 void yellow(){
   printf("\033[0;33m");
+}
+
+void blue(){
+    printf("\033[0;34m");
 }
 
 void reset(){
@@ -314,79 +438,92 @@ void make_route(){
             // when the input of list becomes -1, which means there are no more stations to visit,
             // stop the function.
         }
+        int k;
+        for(k = 0; k < 100; k++){
+            commands[k] = -1;
+        }
         station1 = stations[i];
         station2 = stations[i+1];
         path = find_path(station1,station2);
         char buf[100];
-        snprintf(buf, 100, "Starting at station %d with direction %d \n", station1, direction);
+        snprintf(buf, 100, "Starting at station %d with direction %d", station1, direction);
         debug(buf);
-        debug("Go straight... \n");
+        debug("Go straight...");
+        k = 0;
         for(j = 2; path.path_array[j + 2].x != -1; j = j + 2){
             int row = (path.path_array[j].y - 2) / 2;
             int column = (path.path_array[j].x - 2) / 2;
             int next_row = (path.path_array[j + 2].y - 2) / 2;
             int next_column = (path.path_array[j + 2].x - 2) / 2;
             char buf[100];
-            snprintf(buf, 100, "c%d%d \n", row, column);
+            snprintf(buf, 100, "c%d%d", row, column);
             debug(buf);
             if(row - next_row == -1){
                 // Go south
                 if(direction == 3){
                     debug("Go left...");
+                    commands[k] = 1;
                 }
                 else if(direction == 2){
                     debug("Go straight...");
+                    commands[k] = 0;
                 }
                 else if(direction == 1){
                     debug("Go right...");
+                    commands[k] = 2;
                 }
-                debug("\n");
                 direction = 2;
             }
             else if(row - next_row == 1){
                 // Go north
                 if(direction == 1){
                     debug("Go left...");
+                    commands[k] = 1;
                 }
                 else if(direction == 0){
                     debug("Go straight...");
+                    commands[k] = 0;
                 }
                 else if(direction == 3){
                     debug("Go right...");
+                    commands[k] = 2;
                 }
-                debug("\n");
                 direction = 0;
             }
             else if(column - next_column == 1){
                 // Go west
                 if(direction == 0){
                     debug("Go left...");
+                    commands[k] = 1;
                 }
                 else if(direction == 3){
                     debug("Go straight...");
+                    commands[k] = 0;
                 }
                 else if(direction == 2){
                     debug("Go right...");
+                    commands[k] = 2;
                 }
-                debug("\n");
                 direction = 3;
             }
             else if(column - next_column == -1){
                 // Go east
                 if(direction == 2){
                     debug("Go left...");
+                    commands[k] = 1;
                 }
                 else if(direction == 1){
                     debug("Go straight...");
+                    commands[k] = 0;
                 }
                 else if(direction == 0){
                     debug("Go right...");
+                    commands[k] = 2;
                 }
-                debug("\n");
                 direction = 1;
             }
+            k += 1;
         }
-        debug("\n");
     }
 }
 
@@ -431,32 +568,6 @@ void sendcommandtorobot(int command){
     }
 }
 
-
-
-// Output the path
-// void output(){
-//     struct cell starting_cell = get_station(starting_station);
-//     struct cell end_cell = get_station(end_station);
-// }
-
-void gotoxy(int column, int line){
-    COORD coord;
-    coord.X = column;
-    coord.Y = line;
-    SetConsoleCursorPosition(
-        GetStdHandle( STD_OUTPUT_HANDLE ),
-        coord
-    );
-}
-
-void debug(char *message){
-    gotoxy(0, 28);
-    printf("\33[2K\r");
-    gotoxy(0, 28);
-    printf(message);
-    Sleep(500);
-}
-
 void visualize_maze(){
     gotoxy(0,1);
     int i, j;
@@ -470,16 +581,31 @@ void visualize_maze(){
             int nDigits = 1;
             if(maze[j][i].v != 0){
                 if(maze[j][i].v != -1){
-                    green();
+                    if(robot.x == j && robot.y == i){
+                        blue();
+                    }
+                    else{
+                        green();
+                    }
                     nDigits = floor(log10(abs(maze[j][i].v))) + 1;
                 }
                 else{
-                    red();
+                    if(robot.x == j && robot.y == i){
+                        blue();
+                    }
+                    else{
+                        red();
+                    }
                     nDigits = 2;
                 }
             }
             else {
-                yellow();
+                if(robot.x == j && robot.y == i){
+                    blue();
+                }
+                else{
+                    yellow();
+                }
             }
             if(nDigits != 2){
                 printf(" ");
@@ -560,104 +686,15 @@ void lee_start_2_target(int start_i, int start_j,
     }
 }
 
-//--------------------------------------------------------------
-// Function: initSio
-// Description: intializes the parameters as Baudrate, Bytesize, 
-//           Stopbits, Parity and Timeoutparameters of
-//           the COM port
-//--------------------------------------------------------------
-void initSio(HANDLE hSerial){
-
-    COMMTIMEOUTS timeouts ={0};
-    DCB dcbSerialParams = {0};
-
-    dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
-
-    if (!GetCommState(hSerial, &dcbSerialParams)) {
-        //error getting state
-        printf("error getting state \n");
-    }
-
-    dcbSerialParams.BaudRate = BAUDRATE;
-    dcbSerialParams.ByteSize = 8;
-    dcbSerialParams.StopBits = ONESTOPBIT;
-    dcbSerialParams.Parity   = NOPARITY;
-
-    if(!SetCommState(hSerial, &dcbSerialParams)){
-        //error setting serial port state
-        printf("error setting state \n");
-    }
-
-    timeouts.ReadIntervalTimeout = 50;
-    timeouts.ReadTotalTimeoutConstant = 50;
-    timeouts.ReadTotalTimeoutMultiplier = 10;
-
-    timeouts.WriteTotalTimeoutConstant = 50;
-    timeouts.WriteTotalTimeoutMultiplier = 10;
-
-    if(!SetCommTimeouts(hSerial, &timeouts)){
-    //error occureed. Inform user
-        printf("error setting timeout state \n");
-    }
-}
-
-//--------------------------------------------------------------
-// Function: readByte
-// Description: reads a single byte from the COM port into
-//              buffer buffRead
-//--------------------------------------------------------------
-int readByte(HANDLE hSerial, char *buffRead) {
-
-    DWORD dwBytesRead = 0;
-
-    if (!ReadFile(hSerial, buffRead, 1, &dwBytesRead, NULL))
-    {
-        printf("error reading byte from input buffer \n");
-    }
-    printf("Byte read from read buffer is: %c \n", buffRead[0]);
-    return(buffRead[0]);
-}
-
-//this function checks if readByte changes, if it does combithaschanged will go to 1
-int checkifcomchanged(){
-    char currentbit[32];
-    int combithaschanged = 0;
-    int i;
-    readByte(hSerial, currentbit);
-    if(strcmp(lastrecievedbit, currentbit) == 0){
-        combithaschanged = 1;
-        for(i=0; i<32; i++){
-            lastrecievedbit[i] = currentbit[i];
-        }
-    } else {
-        combithaschanged = 0;
-    }
-    return(combithaschanged);
-}
-
-
-//--------------------------------------------------------------
-// Function: writeByte
-// Description: writes a single byte stored in buffRead to
-//              the COM port 
-//--------------------------------------------------------------
-int writeByte(HANDLE hSerial, char *buffWrite){
-
-    DWORD dwBytesWritten = 0;
-
-    if (!WriteFile(hSerial, buffWrite, 1, &dwBytesWritten, NULL))
-    {
-        printf("error writing byte to output buffer \n");
-    }
-    printf("Byte written to write buffer is: %c \n", buffWrite[0]);
-
-    return(0);
-}
-
 int main(){
     srand(time(NULL));
-    initialize_maze();
-    lee_start_2_target(0,4, 12,4);
+
+    initialize_maze_test();
+
+    robot.x = 0;
+    robot.y = 4;
+
+    // lee_start_2_target(robot.x, robot.y, 12, 4);
 
     char byteBuffer[BUFSIZ+1];
 
@@ -687,19 +724,10 @@ int main(){
     initSio(hSerial);
     //----------------------------------------------------------
 
-    while(1){
-        char test[32];
-        readByte(hSerial, test);
-        printf("%c", test);
-        Sleep(50);
-    }
-
     read_input();
 
-    while(1){
-        visualize_maze();
-        make_route();
-    }
+    visualize_maze();
+    make_route();
 
 
     writeByte(hSerial, "E"); //at last, send stop byte to robot to get it to stop.
