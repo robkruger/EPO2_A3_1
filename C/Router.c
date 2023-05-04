@@ -429,7 +429,18 @@ void sendcommandtorobot(int command){
     }
 }
 
+void updaterobotposition(int command){
+    if(command=0){
+        
+    } else if (command=1){
 
+    } else if (command = 2){
+
+    } else if (command = 3){
+
+    }
+
+}
 
 // Output the path
 // void output(){
@@ -689,6 +700,25 @@ int main(){
     make_route();
     visualize_maze();
 
+
+    //this piece of code will send the commands to the robot
+    int i = 0;
+    char character[32];
+    while(commands[i+1] != -1){ //loop while there are actually commands
+        sendcommandtorobot(commands.commands[i].v);
+        while(checkifcomchanged()==0 && character != "L"){ //check if the robot has done the movements
+            readByte(hSerial, character);
+            Sleep(5);
+        }
+        //this will update the current position of the robot
+        updaterobotposition(commands[i]);
+        while(/*currentpos of robot */){
+
+            
+        }
+        i++;
+        Sleep(50);
+    }
 
     writeByte(hSerial, "E"); //at last, send stop byte to robot to get it to stop.
     return 0;
