@@ -780,7 +780,7 @@ void lee_start_2_target(int start_i, int start_j,
 int main(){
     srand(time(NULL));
 
-    initialize_maze();
+    initialize_maze_test();
 
     robot.x = 0;
     robot.y = 4;
@@ -838,7 +838,7 @@ int main(){
                 perror("Unknown command send by robot!");
             }
             else if(response == 2){
-                initialize_maze();
+                initialize_maze_test();
                 struct cell station = get_station(end_station);
                 lee_start_2_target(robot.x, robot.y, station.x, station.y);
                 make_route(n);
