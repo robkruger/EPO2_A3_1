@@ -5,10 +5,14 @@
 #include <string.h>
 #include <Windows.h>
 
-#define COMPORT "COM2"
+#define COMPORT "COM3"
 #define BAUDRATE CBR_9600
 
 const int GRID_SIZE = 13;
+
+HANDLE hSerial;
+//these variables are used by checkifcomchanged function
+char lastrecievedbit[32] = "x";
 
 struct cell {
     // Value
@@ -384,6 +388,49 @@ void make_route(){
     }
 }
 
+//these functions can be called for the instructions to be send to the robot
+//also a handshake functionality is implementec
+void sendcommandtorobot(int command){
+    char character[32];
+    if(command==0){ 
+        //go forward
+        writeByte(hSerial, "A");
+        while(checkifcomchanged()==0 && character != "R"){
+            readByte(hSerial, character);
+            Sleep(5);
+            //this is only necessary if the error margin of recieved bytes is big.
+           // if(checkifcomchanged()==0 && readByte(hSerial, character) != "R"){
+           //     writeByte(hSerial, "A"); }
+        }
+    } else if (command==1){ // go left
+        writeByte(hSerial, "B");
+        while(checkifcomchanged()==0 && character != "S"){
+            readByte(hSerial, character);
+            Sleep(5);
+        }
+    } else if (command==2){ // go right
+        writeByte(hSerial, "C");
+        while(checkifcomchanged()==0 && character != "T"){
+            readByte(hSerial, character);
+            Sleep(5);
+        }
+    } else if (command==3){ // turn around
+        writeByte(hSerial, "D");
+        while(checkifcomchanged()==0 && character != "U"){
+            readByte(hSerial, character);
+            Sleep(5);
+        }
+    } else if (command==4){ // stop
+        writeByte(hSerial, "E");
+        while(checkifcomchanged()==0 && character != "V"){
+            readByte(hSerial, character);
+            Sleep(5);
+        }
+    }
+}
+
+
+
 // Output the path
 // void output(){
 //     struct cell starting_cell = get_station(starting_station);
@@ -558,8 +605,26 @@ int readByte(HANDLE hSerial, char *buffRead) {
         printf("error reading byte from input buffer \n");
     }
     printf("Byte read from read buffer is: %c \n", buffRead[0]);
-    return(0);
+    return(buffRead[0]);
 }
+
+//this function checks if readByte changes, if it does combithaschanged will go to 1
+int checkifcomchanged(){
+    char currentbit[32];
+    int combithaschanged = 0;
+    int i;
+    readByte(hSerial, currentbit);
+    if(strcmp(lastrecievedbit, currentbit) == 0){
+        combithaschanged = 1;
+        for(i=0; i<32; i++){
+            lastrecievedbit[i] = currentbit[i];
+        }
+    } else {
+        combithaschanged = 0;
+    }
+    return(combithaschanged);
+}
+
 
 //--------------------------------------------------------------
 // Function: writeByte
@@ -583,8 +648,6 @@ int main(){
     srand(time(NULL));
     initialize_maze();
     lee_start_2_target(0,4, 12,4);
-
-    HANDLE hSerial;
 
     char byteBuffer[BUFSIZ+1];
 
@@ -611,14 +674,22 @@ int main(){
 
     //----------------------------------------------------------
     // Initialize the parameters of the COM port
+    initSio(hSerial);
     //----------------------------------------------------------
 
-    initSio(hSerial);
+    while(1){
+        char test[32];
+        readByte(hSerial, test);
+        printf("%c", test);
+        Sleep(50);
+    }
 
     read_input();
 
     make_route();
     visualize_maze();
 
+
+    writeByte(hSerial, "E"); //at last, send stop byte to robot to get it to stop.
     return 0;
 }
