@@ -129,12 +129,12 @@ int com_changed(){
     int i;
     readByte(hSerial, currentbit);
     if(strcmp(lastrecievedbit, currentbit) == 0){
+        combithaschanged = 0;     
+    } else {
         combithaschanged = 1;
         for(i=0; i<32; i++){
             lastrecievedbit[i] = currentbit[i];
         }
-    } else {
-        combithaschanged = 0;
     }
     return(combithaschanged);
 }
@@ -622,14 +622,7 @@ void send_command_to_robot(int command){
             Sleep(5);
         }
     } 
-    else if (command == 3){ // turn around
-        writeByte(hSerial, "D");
-        while(com_changed() == 0 && character != "U"){
-            readByte(hSerial, character);
-            Sleep(5);
-        }
-    } 
-    else if (command == 4){ // stop
+    else if (command == 3){ // stop
         writeByte(hSerial, "E");
         while(com_changed() == 0 && character != "V"){
             readByte(hSerial, character);
