@@ -11,7 +11,7 @@
 const int GRID_SIZE = 13;
 
 HANDLE hSerial;
-//these variables are used by checkifcomchanged function
+//these variables are used by com_changed function
 char lastrecievedbit[32] = "x";
 
 struct cell {
@@ -122,7 +122,7 @@ int readByte(HANDLE hSerial, char *buffRead) {
 }
 
 //this function checks if readByte changes, if it does combithaschanged will go to 1
-int checkifcomchanged(){
+int com_changed(){
     char currentbit[32];
     int combithaschanged = 0;
     int i;
@@ -534,39 +534,39 @@ void make_route(){
 
 //these functions can be called for the instructions to be send to the robot
 //also a handshake functionality is implementec
-void sendcommandtorobot(int command){
+void send_command_to_robot(int command){
     char character[32];
     if(command==0){ 
         //go forward
         writeByte(hSerial, "A");
-        while(checkifcomchanged()==0 && character != "R"){
+        while(com_changed()==0 && character != "R"){
             readByte(hSerial, character);
             Sleep(5);
             //this is only necessary if the error margin of recieved bytes is big.
-           // if(checkifcomchanged()==0 && readByte(hSerial, character) != "R"){
+           // if(com_changed()==0 && readByte(hSerial, character) != "R"){
            //     writeByte(hSerial, "A"); }
         }
     } else if (command==1){ // go left
         writeByte(hSerial, "B");
-        while(checkifcomchanged()==0 && character != "S"){
+        while(com_changed()==0 && !strcmp(character,"S")){
             readByte(hSerial, character);
             Sleep(5);
         }
     } else if (command==2){ // go right
         writeByte(hSerial, "C");
-        while(checkifcomchanged()==0 && character != "T"){
+        while(com_changed()==0 && !strcmp(character,"T")){
             readByte(hSerial, character);
             Sleep(5);
         }
     } else if (command==3){ // turn around
         writeByte(hSerial, "D");
-        while(checkifcomchanged()==0 && character != "U"){
+        while(com_changed()==0 && !strcmp(character,"U")){
             readByte(hSerial, character);
             Sleep(5);
         }
     } else if (command==4){ // stop
         writeByte(hSerial, "E");
-        while(checkifcomchanged()==0 && character != "V"){
+        while(com_changed()==0 && !strcmp(character,"V")){
             readByte(hSerial, character);
             Sleep(5);
         }
@@ -575,17 +575,17 @@ void sendcommandtorobot(int command){
 
 //this function will update the robot position in the maze accordingly to the command.
 void update_robot_position(int command){
-    if (command = 0){
-        if(robot.direction = 0){
+    if (command = 0){ //forward
+        if(robot.direction = 0){ //north
             robot.y = robot.y - 1;
-        } else if (robot.direction = 1){
+        } else if (robot.direction = 1){ //east
             robot.x = robot.x + 1;
-        } else if (robot.direction = 2){
+        } else if (robot.direction = 2){ //south
             robot.y = robot.y + 1;
-        } else if (robot.direction = 3){
+        } else if (robot.direction = 3){ //west
             robot.x = robot.x - 1;
         }
-    } else if (command = 1){
+    } else if (command = 1){ //left
         if(robot.direction = 0){
             robot.y = robot.y - 1;
             robot.direction = 3;
@@ -599,25 +599,29 @@ void update_robot_position(int command){
             robot.x = robot.x - 1;
             robot.direction = 2;
         }
-    } else if (command = 2){
+    } else if (command = 2){ //right
         if(robot.direction = 0){
             robot.y = robot.y - 1;
+            robot.direction = 1;
         } else if (robot.direction = 1){
             robot.x = robot.x + 1;
+            robot.direction = 2;
         } else if (robot.direction = 2){
             robot.y = robot.y + 1;
+            robot.direction = 3;
         } else if (robot.direction = 3){
             robot.x = robot.x - 1;
+            robot.direction = 0;
         }
-    } else if (command = 3){
+    } else if (command = 3){ //turn around
         if(robot.direction = 0){
-            robot.y = robot.y - 1;
+            robot.direction = 2;
         } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
+            robot.direction = 3;
         } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
+            robot.direction = 0;
         } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
+            robot.direction = 1;
         }
     }
 
