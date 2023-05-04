@@ -395,15 +395,19 @@ void initialize_maze(){
 struct path find_path(int start, int end){
     if(start == 1 || start == 2 || start == 3){
         direction = 0;
+        robot.direction = 0;
     }
     else if(start == 4 || start == 5 || start == 6){
         direction = 3;
+        robot.direction = 3;
     }
     else if(start == 7 || start == 8 || start == 9){
-        direction = 2;
+        direction = 2;        
+        robot.direction = 2;
     }
     else{
-        direction = 1;
+        direction = 1;        
+        robot.direction = 1;
     }
     struct cell ending_cell = get_station(end);
     struct cell current_cell = get_station(start);
@@ -609,6 +613,57 @@ int listen_to_robot(int route_index){
     
 }
 
+//this function will update the robot position in the maze accordingly to the command.
+void update_robot_position(int command){
+    if (command = 0){
+        if(robot.direction = 0){
+            robot.y = robot.y - 1;
+        } else if (robot.direction = 1){
+            robot.x = robot.x + 1;
+        } else if (robot.direction = 2){
+            robot.y = robot.y + 1;
+        } else if (robot.direction = 3){
+            robot.x = robot.x - 1;
+        }
+    } else if (command = 1){
+        if(robot.direction = 0){
+            robot.y = robot.y - 1;
+            robot.direction = 3;
+        } else if (robot.direction = 1){
+            robot.x = robot.x + 1;
+            robot.direction = 0;
+        } else if (robot.direction = 2){
+            robot.y = robot.y + 1;
+            robot.direction = 1;
+        } else if (robot.direction = 3){
+            robot.x = robot.x - 1;
+            robot.direction = 2;
+        }
+    } else if (command = 2){
+        if(robot.direction = 0){
+            robot.y = robot.y - 1;
+        } else if (robot.direction = 1){
+            robot.x = robot.x + 1;
+        } else if (robot.direction = 2){
+            robot.y = robot.y + 1;
+        } else if (robot.direction = 3){
+            robot.x = robot.x - 1;
+        }
+    } else if (command = 3){
+        if(robot.direction = 0){
+            robot.y = robot.y - 1;
+        } else if (robot.direction = 1){
+            robot.x = robot.x + 1;
+        } else if (robot.direction = 2){
+            robot.y = robot.y + 1;
+        } else if (robot.direction = 3){
+            robot.x = robot.x - 1;
+        }
+    }
+
+}
+
+
 void visualize_maze(){
     gotoxy(0,1);
     int i, j;
@@ -770,6 +825,14 @@ int main(){
     visualize_maze();
     make_route();
 
+
+    //this piece of code will send the commands to the robot
+    int i = 0;
+    char character[32];
+    while(commands[i+1] != -1){ //loop while there are actually commands
+        sendcommandtorobot(commands[i]);
+
+    }
 
     writeByte(hSerial, "E"); //at last, send stop byte to robot to get it to stop.
     return 0;
