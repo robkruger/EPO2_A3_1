@@ -8,10 +8,15 @@
 #define COMPORT "COM2"
 #define BAUDRATE CBR_9600
 
+const int GRID_SIZE = 13;
+
 struct cell {
-    int v; // Value
-    int x, y; // Location in the maze
-    char name[8]; // Name, not used at the moment
+    // Value
+    int v; 
+    // Location in the maze
+    int x, y; 
+    // Name, not used at the moment
+    char name[8]; 
 };
 
 // Matrix represantation of the maze
@@ -435,6 +440,69 @@ void visualize_maze(){
     }
 }
 
+int *find_possible_neighbors(int i, int j){
+    // returns a 1D array for i,j that are possible neighbours
+
+    //allocate memory 4 x (i and j) = 8
+    int *n = (int *)malloc(4*2 * sizeof(int));
+    // initialise all to -1
+    for (int k =0; k < 8; k++) {
+        n[k] = -1;
+    }
+    // check indecies lie within the matrix and are unassigned (value = 0)
+    if (0 <= i-1){                  // LEFT
+        if (maze[i-1][j].v == 0) {
+            n[0] = i-1;
+            n[1] = j;
+        }
+    } 
+    if (i+1 <= GRID_SIZE){          // RIGHT
+        if (maze[i+1][j].v == 0) {
+            n[2] = i+1;
+            n[3] = j;
+        } 
+    }
+    if (0 <= j-1){                  // UP
+        if (maze[i][j-1].v == 0) {
+            n[4] = i;
+            n[5] = j-1;
+        } 
+    }
+    if (j+1 <= GRID_SIZE){          // DOWN
+        if (maze[i][j+1].v == 0) {
+            n[6] = i;
+            n[7] = j+1;
+        } 
+    } 
+    return n;
+}
+
+void lee_start_2_target(int start_i, int start_j,
+                        int target_i, int target_j){
+    int counter = 1;
+    int *neigbours;
+    maze[start_i][start_j].v = counter;
+
+
+    while (maze[target_i][target_j].v == 0) {
+        // increment the neigbours of all cells with value = counter:
+        for (int j=0; j<GRID_SIZE; j++){
+            for (int i=0; i<GRID_SIZE; i++){
+                if (maze[j][i].v == counter){
+                    neigbours = find_possible_neighbors(j, i);
+                    for (int k=0; k < 4; k++){
+                        if (neigbours[k*2] != -1){
+                            maze[neigbours[k*2]][neigbours[k*2+1]].v = counter+1;
+                        }
+                    }
+                    free(neigbours);
+                }
+            }
+        }
+        counter++;
+    }
+    
+
 //--------------------------------------------------------------
 // Function: initSio
 // Description: intializes the parameters as Baudrate, Bytesize, 
@@ -513,7 +581,8 @@ int writeByte(HANDLE hSerial, char *buffWrite){
 
 int main(){
     srand(time(NULL));
-    initialize_maze_test();
+    initialize_maze();
+    lee_start_2_target(0,4, 12,4);
 
     HANDLE hSerial;
 
