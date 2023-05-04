@@ -501,7 +501,7 @@ void lee_start_2_target(int start_i, int start_j,
         }
         counter++;
     }
-    
+}
 
 //--------------------------------------------------------------
 // Function: initSio
