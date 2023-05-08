@@ -121,6 +121,10 @@ void yellow(){
   printf("\033[0;33m");
 }
 
+void blue(){
+  printf("\033[0;34m");
+}
+
 void reset(){
   printf("\033[0m");
 }
@@ -248,147 +252,6 @@ void initialize_maze(){
     }
 }
 
-// Find the shortest path from starting station to end station
-struct path find_path(int start, int end){
-    if(start == 1 || start == 2 || start == 3){
-        direction = 0;
-    }
-    else if(start == 4 || start == 5 || start == 6){
-        direction = 3;
-    }
-    else if(start == 7 || start == 8 || start == 9){
-        direction = 2;
-    }
-    else{
-        direction = 1;
-    }
-    struct cell ending_cell = get_station(end);
-    struct cell current_cell = get_station(start);
-    struct path path_object;
-    int j;
-    for(j=0; j<100; j++){
-        path_object.path_array[j].x = -1;
-        path_object.path_array[j].y = -1;
-    }
-
-    int i = 0;
-    while(!cells_equal(current_cell, ending_cell)){
-        int next_v = current_cell.v + 1;
-        int x = current_cell.x;
-        int y = current_cell.y;
-
-        path_object.path_array[i].x = current_cell.x;
-        path_object.path_array[i].y = current_cell.y;
-
-        if(maze[x + 1][y].v == next_v){
-            current_cell = maze[x + 1][y];
-        }
-        else if(maze[x - 1][y].v == next_v){
-            current_cell = maze[x - 1][y];
-        }
-        else if(maze[x][y + 1].v == next_v){
-            current_cell = maze[x][y + 1];
-        }
-        else if(maze[x][y - 1].v == next_v){
-            current_cell = maze[x][y - 1];
-        }
-        i++;
-    }
-    
-    path_object.path_array[i].x = current_cell.x;
-    path_object.path_array[i].y = current_cell.y;
-
-    return path_object;
-}
-
-//this function gets the start and end stations+ ones in between, calls the getroute functions 
-//for two stations at one time, and thus outputs a route for as much stations that is needed.
-void make_route(){
-    int station1, station2, i, j;
-    struct path path;
-    for(i = 0; i < 11; i++){
-        if(stations[i + 1] == -1){
-            break;
-            // when the input of list becomes -1, which means there are no more stations to visit,
-            // stop the function.
-        }
-        station1 = stations[i];
-        station2 = stations[i+1];
-        path = find_path(station1,station2);
-        printf("Starting at station %d with direction %d \n", station1, direction);
-        printf("Go straight... \n");
-        for(j = 2; path.path_array[j + 2].x != -1; j = j + 2){
-            int row = (path.path_array[j].y - 2) / 2;
-            int column = (path.path_array[j].x - 2) / 2;
-            int next_row = (path.path_array[j + 2].y - 2) / 2;
-            int next_column = (path.path_array[j + 2].x - 2) / 2;
-            printf("c%d%d \n", row, column);
-            if(row - next_row == -1){
-                // Go south
-                if(direction == 3){
-                    printf("Go left...");
-                }
-                else if(direction == 2){
-                    printf("Go straight...");
-                }
-                else if(direction == 1){
-                    printf("Go right...");
-                }
-                printf("\n");
-                direction = 2;
-            }
-            else if(row - next_row == 1){
-                // Go north
-                if(direction == 1){
-                    printf("Go left...");
-                }
-                else if(direction == 0){
-                    printf("Go straight...");
-                }
-                else if(direction == 3){
-                    printf("Go right...");
-                }
-                printf("\n");
-                direction = 0;
-            }
-            else if(column - next_column == 1){
-                // Go west
-                if(direction == 0){
-                    printf("Go left...");
-                }
-                else if(direction == 3){
-                    printf("Go straight...");
-                }
-                else if(direction == 2){
-                    printf("Go right...");
-                }
-                printf("\n");
-                direction = 3;
-            }
-            else if(column - next_column == -1){
-                // Go east
-                if(direction == 2){
-                    printf("Go left...");
-                }
-                else if(direction == 1){
-                    printf("Go straight...");
-                }
-                else if(direction == 0){
-                    printf("Go right...");
-                }
-                printf("\n");
-                direction = 1;
-            }
-        }
-        printf("\n");
-    }
-}
-
-// Output the path
-// void output(){
-//     struct cell starting_cell = get_station(starting_station);
-//     struct cell end_cell = get_station(end_station);
-// }
 
 void gotoxy(int column, int line){
     COORD coord;
@@ -438,6 +301,177 @@ void visualize_maze(){
         printf("-");
         printf("\n");
     }
+}
+
+/******************************************************************************
+Written by group A3-1
+Path finding (Lee) algorithm
+******************************************************************************/
+
+// Linked list implementation for path
+typedef struct Path_node {
+    int x, y;
+    struct Path_node *next;
+} path_t;
+
+path_t *insert_node_front(path_t *old_head, int x, int y) {
+    path_t *new_head = (path_t *)malloc(sizeof(path_t));
+    new_head->x = x;
+    new_head->y = y;
+    new_head->next = old_head;
+    return new_head;
+}
+
+void free_path(path_t *head) {
+    path_t *tmp;
+    while (head) {
+        tmp = head;
+        head = head->next;
+        free(head);
+    }
+}
+
+void print_path(path_t *head) {
+    path_t *cur = head;
+    while (cur) {
+        printf("(%d, %d)\n", cur->x, cur->y);
+        cur = cur->next;
+    }
+}
+
+
+void write_instruc_from_path_to(int *buffer, path_t *path) {
+    /*  Produce an array of instructions that can be sent to the robot
+        we're using an array of integers to represent instructions:
+            0: Continue straight
+            1: Turn left
+            2: Turn right
+            3: stop     
+            
+        we also need to keep track of the robot's direction: N, E, S, W */ 
+    
+    char dir;
+    path_t *cur = path;
+    int i = 0;
+
+    // finding the starting direction
+    // must start from a station, so we can just test for the edge that its on (assume dir is inwards)
+    if (path->x == 0) {
+        dir = 'E';
+    } else if (path->x == GRID_SIZE-1) {
+        dir = 'W';
+    } else if (path->y == 0) {
+        dir = 'S';
+    } else {
+        dir = 'N';
+    }
+
+    // translate to instructions
+    while (cur->next) {
+        if (cur->x < cur->next->x) {
+            switch (dir) {
+                case 'E':
+                    buffer[i++] = 0;
+                    break;
+                case 'S':
+                    buffer[i++] = 1;
+                    break;
+                case 'N':
+                    buffer[i++] = 2;
+                    break;
+                default:
+                    buffer[i++] = 3;
+            }
+            dir = 'E';
+        } else if (cur->x > cur->next->x) {
+            switch (dir) {
+                case 'W':
+                    buffer[i++] = 0;
+                    break;
+                case 'S':
+                    buffer[i++] = 2;
+                    break;
+                case 'N':
+                    buffer[i++] = 1;
+                    break;
+                default:
+                    buffer[i++] = 3;
+            }
+            dir = 'W';
+        } else if (cur->y < cur->next->y) {
+            switch (dir) {
+                case 'S':
+                    buffer[i++] = 0;
+                    break;
+                case 'E':
+                    buffer[i++] = 2;
+                    break;
+                case 'W':
+                    buffer[i++] = 1;
+                    break;
+                default:
+                    buffer[i++] = 3;
+            }
+            dir = 'S';
+        } else if (cur->y > cur->next->y) {
+            switch (dir) {
+                case 'N':
+                    buffer[i++] = 0;
+                    break;
+                case 'E':
+                    buffer[i++] = 1;
+                    break;
+                case 'W':
+                    buffer[i++] = 2;
+                    break;
+                default:
+                    buffer[i++] = 3;
+            }
+            dir = 'N';
+        } else {
+            buffer[i++] = 3;
+        }
+        cur = cur->next;
+    } 
+    buffer[i++] = 3;
+    
+    free(path);
+
+    // we now have every possible transition in the matrix, 
+    // but only the odd ones represent a crossing! 
+}
+
+
+path_t *generate_path_start_2_target(int start, int target) {
+    // initialise path list
+    path_t *path = NULL;
+
+    //start at the end and work backwards
+    struct cell start_cell = get_station(start);
+    struct cell cur_cell = get_station(target);
+    struct cell next_cell;
+    path = insert_node_front(path, cur_cell.x, cur_cell.y);
+
+    while (!cells_equal(cur_cell, start_cell)) {
+        // look left, right, up, down for the cell with value lower than its own (there will always be one)
+        // Lazy evaluation allows for the statements after && to not produce an error
+        if ((cur_cell.x-1 >= 0) && (-1 < maze[cur_cell.x-1][cur_cell.y].v) && (maze[cur_cell.x-1][cur_cell.y].v < cur_cell.v)) {                    // LEFT
+            next_cell = maze[cur_cell.x-1][cur_cell.y];
+        } else if ((cur_cell.x+1 <= GRID_SIZE) && (-1 < maze[cur_cell.x+1][cur_cell.y].v) && (maze[cur_cell.x+1][cur_cell.y].v < cur_cell.v)) {     // RIGHT
+            next_cell = maze[cur_cell.x+1][cur_cell.y];
+        } else if ((cur_cell.y-1 >= 0) && (-1 < maze[cur_cell.x][cur_cell.y-1].v) && (maze[cur_cell.x][cur_cell.y-1].v < cur_cell.v)) {             // UP
+            next_cell = maze[cur_cell.x][cur_cell.y-1];
+        } else if ((cur_cell.y+1 <= GRID_SIZE) && (-1 < maze[cur_cell.x][cur_cell.y+1].v) && (maze[cur_cell.x][cur_cell.y+1].v < cur_cell.v)) {     // DOWN
+            next_cell = maze[cur_cell.x][cur_cell.y+1];
+        } else {
+            printf("no cell in maze with lower value found");
+            break;
+        }
+        path = insert_node_front(path, next_cell.x, next_cell.y);
+        cur_cell = next_cell;
+    }
+    // path = insert_node_front(path, start_cell.x, start_cell.y);
+    return path;
 }
 
 int *find_possible_neighbors(int i, int j){
@@ -501,7 +535,7 @@ void lee_start_2_target(int start_i, int start_j,
         }
         counter++;
     }
-    
+}
 
 //--------------------------------------------------------------
 // Function: initSio
@@ -582,42 +616,57 @@ int writeByte(HANDLE hSerial, char *buffWrite){
 int main(){
     srand(time(NULL));
     initialize_maze();
-    lee_start_2_target(0,4, 12,4);
 
-    HANDLE hSerial;
+    int start_station = 10;
+    int target_station = 5;
+    int instructions[100] = {0};
+    path_t *path;
+    lee_start_2_target(0,4, 12,6);
+    path = generate_path_start_2_target(start_station, target_station);
+    printf("*********\n");
+    print_path(path);
+    write_instruc_from_path_to(instructions, path);
+    
+    int i=0;
+    do {
+        printf("%d: %d\n", i, instructions[i]);
+    } while ((instructions[i++] != 3));
 
-    char byteBuffer[BUFSIZ+1];
 
-    //----------------------------------------------------------
-    // Open COMPORT for reading and writing
-    //----------------------------------------------------------
-    hSerial = CreateFile(COMPORT,
-        GENERIC_READ | GENERIC_WRITE,
-        0,
-        0,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        0
-    );
+    // HANDLE hSerial;
 
-    if(hSerial == INVALID_HANDLE_VALUE){
-        if(GetLastError()== ERROR_FILE_NOT_FOUND){
-            //serial port does not exist. Inform user.
-            printf(" serial port does not exist \n");
-        }
-        //some other error occurred. Inform user.
-        printf(" some other error occured. Inform user.\n");
-    }
+    // char byteBuffer[BUFSIZ+1];
 
-    //----------------------------------------------------------
-    // Initialize the parameters of the COM port
-    //----------------------------------------------------------
+    // //----------------------------------------------------------
+    // // Open COMPORT for reading and writing
+    // //----------------------------------------------------------
+    // hSerial = CreateFile(COMPORT,
+    //     GENERIC_READ | GENERIC_WRITE,
+    //     0,
+    //     0,
+    //     OPEN_EXISTING,
+    //     FILE_ATTRIBUTE_NORMAL,
+    //     0
+    // );
 
-    initSio(hSerial);
+    // if(hSerial == INVALID_HANDLE_VALUE){
+    //     if(GetLastError()== ERROR_FILE_NOT_FOUND){
+    //         //serial port does not exist. Inform user.
+    //         printf(" serial port does not exist \n");
+    //     }
+    //     //some other error occurred. Inform user.
+    //     printf(" some other error occured. Inform user.\n");
+    // }
 
-    read_input();
+    // //----------------------------------------------------------
+    // // Initialize the parameters of the COM port
+    // //----------------------------------------------------------
 
-    make_route();
+    // initSio(hSerial);
+
+    // read_input();
+
+    // make_route();
     visualize_maze();
 
     return 0;
