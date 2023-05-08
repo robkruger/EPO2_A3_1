@@ -5,7 +5,7 @@
 #include <string.h>
 #include <Windows.h>
 
-#define COMPORT "COM3"
+#define COMPORT "COM4"
 #define BAUDRATE CBR_9600
 
 const int GRID_SIZE = 13;
@@ -352,49 +352,46 @@ void initialize_maze_test(){
 void update_robot_position(int command){
     if (command = 0){
         if(robot.direction = 0){
-            robot.y = robot.y - 1;
+            robot.y = robot.y - 2;
         } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
+            robot.x = robot.x + 2;
         } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
+            robot.y = robot.y + 2;
         } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
+            robot.x = robot.x - 2;
         }
     } else if (command = 1){
         if(robot.direction = 0){
-            robot.y = robot.y - 1;
-            robot.direction = 3;
+            robot.y = robot.y - 2;
         } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
-            robot.direction = 0;
+            robot.x = robot.x + 2;
         } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
-            robot.direction = 1;
+            robot.y = robot.y + 2;
         } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
-            robot.direction = 2;
+            robot.x = robot.x - 2;
         }
     } else if (command = 2){
         if(robot.direction = 0){
-            robot.y = robot.y - 1;
+            robot.y = robot.y - 2;
         } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
+            robot.x = robot.x + 2;
         } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
+            robot.y = robot.y + 2;
         } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
+            robot.x = robot.x - 2;
         }
     } else if (command = 3){
         if(robot.direction = 0){
-            robot.y = robot.y - 1;
+            robot.y = robot.y - 2;
         } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
+            robot.x = robot.x + 2;
         } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
+            robot.y = robot.y + 2;
         } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
+            robot.x = robot.x - 2;
         }
     }
+    visualize_maze();
 }
 
 void initialize_maze(){
@@ -496,7 +493,7 @@ int listen_to_robot(int route_index){
                 robot.direction++;
                 }
             }
-            update_robot_position(0);
+            update_robot_position(route_index);
             return 1;
         }
         Sleep(100);
@@ -826,7 +823,7 @@ int main(){
     // //----------------------------------------------------------
 
     // make_route();
-    visualize_maze();
+    //visualize_maze();
 
 
     //this piece of code will send the commands to the robot
@@ -836,12 +833,18 @@ int main(){
             break;
         }
 
-        int instructions[100] = {0};
         path_t *path;
-        lee_start_2_target(0,4, 12,6);
+        struct cell start_station_cell = get_station(start_station);
+        struct cell end_station_cell = get_station(end_station);
+        robot.x = start_station_cell.x;
+        robot.y = start_station_cell.y;
+        lee_start_2_target(start_station_cell.x, start_station_cell.y, end_station_cell.x, end_station_cell.y);
+        visualize_maze();
         path = generate_path_start_2_target(start_station, end_station);
-        write_instruc_from_path_to(instructions, path);
-        
+        // print_path(path);
+        write_instruc_from_path_to(commands, path);
+        visualize_maze();
+
         int i = 0;
         int response;
         char character[32];
