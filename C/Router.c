@@ -131,8 +131,6 @@ int com_changed(){
     printf("current bit %c \n last recieved %c \n", currentbit, lastrecievedbit);
 
     if(strcmp(lastrecievedbit, currentbit) == 0){
-        combithaschanged = 0;
-    } else {
         combithaschanged = 0;     
     } else {
         combithaschanged = 1;
