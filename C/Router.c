@@ -99,6 +99,7 @@ int cells_equal(struct cell cell_1, struct cell cell_2){
     return 0;
 }
 
+
 // Linked list implementation for path
 typedef struct Path_node {
     int x, y;
@@ -131,14 +132,13 @@ void print_path(path_t *head) {
 }
 
 
-
-
 struct robot {
     int x, y;
     int direction;
 };
 
 struct robot robot;
+
 
 /********** Utility Functions ****************************/
 void gotoxy(int column, int line){
@@ -158,6 +158,7 @@ void debug(char *message){
     printf(message);
     Sleep(5);
 }
+
 
 /********** Coloured output text functions ***************/
 void red(){
@@ -182,8 +183,6 @@ void reset(){
 
 
 /********* Input *****************************************/
-// Returns cell corresponding to the according edge
-// 0 - south, 1 - east, 2 - north, 3 - west
 void change_edge(int i, int j, int direction, int v){
     int k, l;
     k = 2 + j * 2;
@@ -201,43 +200,6 @@ void change_edge(int i, int j, int direction, int v){
         k -= 1;
     }
     maze[k][l].v = v;
-}
-
-void found_mine(int x, int y, int direction){ //?
-    if(direction == 0){
-        y -= 1;
-    }
-    else if(direction == 1){
-        x += 1;
-    }
-    else if(direction == 2){
-        y += 1;
-    }
-    else if(direction == 3){
-        x -= 1;
-    }
-    maze[x][y].v = -1;
-}
-
-// Functions to print text in a certain color
-void red(){
-  printf("\033[0;31m");
-}
-
-void green(){
-    printf("\033[0;32m");
-}
-
-void yellow(){
-  printf("\033[0;33m");
-}
-
-void blue(){
-  printf("\033[0;34m");
-}
-
-void reset(){
-  printf("\033[0m");
 }
 
 void read_input(){
@@ -273,7 +235,35 @@ void read_input(){
     end_station = stations[1];
 }
 
+
 /********** Maze *****************************************/
+void initialize_maze(){
+    int i, j;
+    // Initialize everything as an edge first
+    for(i = 0; i < 13; i++){
+        for(j = 0; j < 13; j++){
+            maze[i][j].v = -1;
+            maze[i][j].x = i;
+            maze[i][j].y = j;
+        }
+    }
+    // Set the traversable cells to 0
+    for(i = 0; i < 13; i++){
+        maze[i][4].v = 0;
+        maze[i][6].v = 0;
+        maze[i][8].v = 0;
+        maze[4][i].v = 0;
+        maze[6][i].v = 0;
+        maze[8][i].v = 0;
+    }
+    for(i = 2; i < 11; i++){
+        maze[i][2].v = 0;
+        maze[i][10].v = 0;
+        maze[2][i].v = 0;
+        maze[10][i].v = 0;
+    }
+}
+
 // Initialize the maze with random values
 void initialize_maze_random(){
     int i, j;
@@ -391,6 +381,22 @@ void visualize_maze(){
     }
 }
 
+void found_mine(int x, int y, int direction){ //?
+    if(direction == 0){
+        y -= 1;
+    }
+    else if(direction == 1){
+        x += 1;
+    }
+    else if(direction == 2){
+        y += 1;
+    }
+    else if(direction == 3){
+        x -= 1;
+    }
+    maze[x][y].v = -1;
+}
+
 //this function will update the robot position in the maze accordingly to the command.
 void update_robot_position(int command){
     if (command = 0){
@@ -439,115 +445,6 @@ void update_robot_position(int command){
         }
     }
 }
-
-void initialize_maze(){
-    int i, j;
-    // Initialize everything as an edge first
-    for(i = 0; i < 13; i++){
-        for(j = 0; j < 13; j++){
-            maze[i][j].v = -1;
-            maze[i][j].x = i;
-            maze[i][j].y = j;
-        }
-    }
-    // Set the traversable cells to 0
-    for(i = 0; i < 13; i++){
-        maze[i][4].v = 0;
-        maze[i][6].v = 0;
-        maze[i][8].v = 0;
-        maze[4][i].v = 0;
-        maze[6][i].v = 0;
-        maze[8][i].v = 0;
-    }
-    for(i = 2; i < 11; i++){
-        maze[i][2].v = 0;
-        maze[i][10].v = 0;
-        maze[2][i].v = 0;
-        maze[10][i].v = 0;
-    }
-}
-
-//these functions can be called for the instructions to be send to the robot
-//also a handshake functionality is implementec
-void send_command_to_robot(int command){
-
-    if(command == 0){ 
-        //go forward
-        writeByte(hSerial, "A");
-        while(1){
-            readByte(hSerial, character);
-            Sleep(100);
-            if (strcmp(character, "R") == 0){
-                break;
-            }       
-        }
-    } 
-    else if (command == 1){ // go left
-        writeByte(hSerial, "B");
-        while(1){
-            readByte(hSerial, character);
-            Sleep(100);
-            if (strcmp(character, "S") == 0){
-                break;
-            }
-        }
-    } 
-    else if (command == 2){ // go right
-        writeByte(hSerial, "C");
-        while(1){
-            readByte(hSerial, character);
-            Sleep(100);
-            if (strcmp(character, "T") == 0){
-                break;
-            }
-        }
-    } 
-    else if (command == 4){ // stop
-        writeByte(hSerial, "E");
-        while(1){
-            readByte(hSerial, character);
-            Sleep(100);
-            if (strcmp(character, "V") == 0){
-                break;
-            }
-        }
-    }
-}
-
-// listens to response from robot and returns what happened, 0 means unknown command, 1 means robot successfully completed command,
-// 2 means it found a mine and a new path needs to be calculated.
-int listen_to_robot(int route_index){
-    while(1){
-        readByte(hSerial, character);
-        if (strcmp(character, "Q") == 0){
-            found_mine(robot.x, robot.y, robot.direction);
-            robot.direction = (robot.direction + 2) % 4;
-            return 2;
-        }
-        if (strcmp(character, "X") == 0) {
-            printf("x has been recieved \n");
-            if(commands[route_index] == 1){
-                if(robot.direction == 0){
-                    robot.direction = 3;
-                } else {
-                    robot.direction --;
-                }
-            } else if (commands[route_index] == 2){
-                if (robot.direction == 3){
-                    robot.direction = 1;
-                } else {
-                robot.direction++;
-                }
-            }
-            update_robot_position(0);
-            return 1;
-        }
-        Sleep(100);
-    }
-}
-
-
-
 
 
 /********** Lee's algorithm: pathfinding *****************/
@@ -825,6 +722,85 @@ int writeByte(HANDLE hSerial, char *buffWrite){
     printf("Byte written to write buffer is: %c \n", buffWrite[0]);
 
     return(0);
+}
+
+//these functions can be called for the instructions to be send to the robot
+//also a handshake functionality is implementec
+void send_command_to_robot(int command){
+
+    if(command == 0){ 
+        //go forward
+        writeByte(hSerial, "A");
+        while(1){
+            readByte(hSerial, character);
+            Sleep(100);
+            if (strcmp(character, "R") == 0){
+                break;
+            }       
+        }
+    } 
+    else if (command == 1){ // go left
+        writeByte(hSerial, "B");
+        while(1){
+            readByte(hSerial, character);
+            Sleep(100);
+            if (strcmp(character, "S") == 0){
+                break;
+            }
+        }
+    } 
+    else if (command == 2){ // go right
+        writeByte(hSerial, "C");
+        while(1){
+            readByte(hSerial, character);
+            Sleep(100);
+            if (strcmp(character, "T") == 0){
+                break;
+            }
+        }
+    } 
+    else if (command == 4){ // stop
+        writeByte(hSerial, "E");
+        while(1){
+            readByte(hSerial, character);
+            Sleep(100);
+            if (strcmp(character, "V") == 0){
+                break;
+            }
+        }
+    }
+}
+
+// listens to response from robot and returns what happened, 0 means unknown command, 1 means robot successfully completed command,
+// 2 means it found a mine and a new path needs to be calculated.
+int listen_to_robot(int route_index){
+    while(1){
+        readByte(hSerial, character);
+        if (strcmp(character, "Q") == 0){
+            found_mine(robot.x, robot.y, robot.direction);
+            robot.direction = (robot.direction + 2) % 4;
+            return 2;
+        }
+        if (strcmp(character, "X") == 0) {
+            printf("x has been recieved \n");
+            if(commands[route_index] == 1){
+                if(robot.direction == 0){
+                    robot.direction = 3;
+                } else {
+                    robot.direction --;
+                }
+            } else if (commands[route_index] == 2){
+                if (robot.direction == 3){
+                    robot.direction = 1;
+                } else {
+                robot.direction++;
+                }
+            }
+            update_robot_position(0);
+            return 1;
+        }
+        Sleep(100);
+    }
 }
 
 int main(){
