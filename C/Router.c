@@ -12,8 +12,7 @@ const int GRID_SIZE = 13;
 
 HANDLE hSerial;
 //variables
-char lastrecievedbit[32] = "P";
-    char character[32];
+char character[32];
 int start_station, end_station;
 
 struct cell {
@@ -122,37 +121,6 @@ int readByte(HANDLE hSerial, char *buffRead) {
     //printf("Byte read from read buffer is: %c \n", buffRead[0]);
     return(buffRead[0]);
 }
-
-//this function checks if readByte changes, if it does combithaschanged will go to 1
-int com_changed(){
-    char currentbit[32];
-    int combithaschanged = 0;
-    int i;
-    readByte(hSerial, currentbit);
-    printf("testing current bit %c \n testing last recieved %c \n", currentbit, lastrecievedbit);
-
-    if (currentbit[0]== '\0'){
-        return 0;
-    }
-    printf("current bit %c \n last recieved %c \n", currentbit, lastrecievedbit);
-
-    if(strcmp(lastrecievedbit, currentbit) == 0){
-        combithaschanged = 0;     
-    //} else if (strcmp(lastrecievedbit, "R") || ) {
-    //    combithaschanged = 1;
-        // for(i=0; i<32; i++){
-        //     lastrecievedbit[i] = currentbit[i];
-        // }
-
-    } else {
-        combithaschanged = 1;
-        strcpy(lastrecievedbit, currentbit);
-    }
-    printf("%d \n", combithaschanged);
-    return(combithaschanged);
-    Sleep(250);
-}
-
 
 //--------------------------------------------------------------
 // Function: writeByte
@@ -456,17 +424,6 @@ void initialize_maze(){
     }
 }
 
-
-void gotoxy(int column, int line){
-    COORD coord;
-    coord.X = column;
-    coord.Y = line;
-    SetConsoleCursorPosition(
-        GetStdHandle( STD_OUTPUT_HANDLE ),
-        coord
-    );
-}
-
 void visualize_maze(){
     gotoxy(0,1);
     int i, j;
@@ -557,7 +514,6 @@ void print_path(path_t *head) {
         cur = cur->next;
     }
 }
-
 
 void write_instruc_from_path_to(int *buffer, path_t *path) {
     /*  Produce an array of instructions that can be sent to the robot
@@ -756,77 +712,39 @@ void lee_start_2_target(int start_i, int start_j,
     }
 }
 
-//--------------------------------------------------------------
-// Function: initSio
-// Description: intializes the parameters as Baudrate, Bytesize, 
-//           Stopbits, Parity and Timeoutparameters of
-//           the COM port
-//--------------------------------------------------------------
-void initSio(HANDLE hSerial){
-
-    COMMTIMEOUTS timeouts ={0};
-    DCB dcbSerialParams = {0};
-
-    dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
-
-    if (!GetCommState(hSerial, &dcbSerialParams)) {
-        //error getting state
-        printf("error getting state \n");
-    }
-
 int main(){
     srand(time(NULL));
     initialize_maze();
 
-    int start_station = 10;
-    int target_station = 5;
-    int instructions[100] = {0};
-    path_t *path;
-    lee_start_2_target(0,4, 12,6);
-    path = generate_path_start_2_target(start_station, target_station);
-    printf("*********\n");
-    print_path(path);
-    write_instruc_from_path_to(instructions, path);
-    
-    int i=0;
-    do {
-        printf("%d: %d\n", i, instructions[i]);
-    } while ((instructions[i++] != 3));
+    read_input();
 
+    char byteBuffer[BUFSIZ+1];
 
-    // HANDLE hSerial;
+    //----------------------------------------------------------
+    // Open COMPORT for reading and writing
+    //----------------------------------------------------------
+    hSerial = CreateFile(COMPORT,
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        0
+    );
 
-    // char byteBuffer[BUFSIZ+1];
-
-    // //----------------------------------------------------------
-    // // Open COMPORT for reading and writing
-    // //----------------------------------------------------------
-    // hSerial = CreateFile(COMPORT,
-    //     GENERIC_READ | GENERIC_WRITE,
-    //     0,
-    //     0,
-    //     OPEN_EXISTING,
-    //     FILE_ATTRIBUTE_NORMAL,
-    //     0
-    // );
-
-    // if(hSerial == INVALID_HANDLE_VALUE){
-    //     if(GetLastError()== ERROR_FILE_NOT_FOUND){
-    //         //serial port does not exist. Inform user.
-    //         printf(" serial port does not exist \n");
-    //     }
-    //     //some other error occurred. Inform user.
-    //     printf(" some other error occured. Inform user.\n");
-    // }
+    if(hSerial == INVALID_HANDLE_VALUE){
+        if(GetLastError()== ERROR_FILE_NOT_FOUND){
+            //serial port does not exist. Inform user.
+            printf(" serial port does not exist \n");
+        }
+        //some other error occurred. Inform user.
+        printf(" some other error occured. Inform user.\n");
+    }
 
     // //----------------------------------------------------------
     // // Initialize the parameters of the COM port
     initSio(hSerial);
     // //----------------------------------------------------------
-
-    // initSio(hSerial);
-
-    // read_input();
 
     // make_route();
     visualize_maze();
@@ -838,7 +756,12 @@ int main(){
         if(stations[n + 1] == -1){
             break;
         }
-        make_route(n);
+
+        int instructions[100] = {0};
+        path_t *path;
+        lee_start_2_target(0,4, 12,6);
+        path = generate_path_start_2_target(start_station, end_station);
+        write_instruc_from_path_to(instructions, path);
         
         int i = 0;
         int response;
@@ -851,12 +774,12 @@ int main(){
             if(response == 0){
                 perror("Unknown command send by robot!");
             }
-            else if(response == 2){
-                initialize_maze_test();
-                struct cell station = get_station(end_station);
-                lee_start_2_target(robot.x, robot.y, station.x, station.y);
-                make_route(n);
-            }
+            // else if(response == 2){
+            //     initialize_maze_test();
+            //     struct cell station = get_station(end_station);
+            //     lee_start_2_target(robot.x, robot.y, station.x, station.y);
+            //     make_route(n);
+            // }
         
             i++;
         }
