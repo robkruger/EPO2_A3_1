@@ -635,6 +635,12 @@ int listen_to_robot(int route_index){
         }
         if (strcmp(character, "X") == 0) {
             printf("x has been recieved \n");
+            if(commands[route_index] == 1){
+                (robot.direction - 1) % 4;
+            }
+            else if(commands[route_index] == 2){
+                (robot.direction + 1) % 4;
+            }
             update_robot_position(commands[route_index]);
             return 1;
         }
