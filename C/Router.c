@@ -424,6 +424,85 @@ void initialize_maze(){
     }
 }
 
+//these functions can be called for the instructions to be send to the robot
+//also a handshake functionality is implementec
+void send_command_to_robot(int command){
+
+    if(command == 0){ 
+        //go forward
+        writeByte(hSerial, "A");
+        while(1){
+            readByte(hSerial, character);
+            Sleep(100);
+            if (strcmp(character, "R") == 0){
+                break;
+            }       
+        }
+    } 
+    else if (command == 1){ // go left
+        writeByte(hSerial, "B");
+        while(1){
+            readByte(hSerial, character);
+            Sleep(100);
+            if (strcmp(character, "S") == 0){
+                break;
+            }
+        }
+    } 
+    else if (command == 2){ // go right
+        writeByte(hSerial, "C");
+        while(1){
+            readByte(hSerial, character);
+            Sleep(100);
+            if (strcmp(character, "T") == 0){
+                break;
+            }
+        }
+    } 
+    else if (command == 4){ // stop
+        writeByte(hSerial, "E");
+        while(1){
+            readByte(hSerial, character);
+            Sleep(100);
+            if (strcmp(character, "V") == 0){
+                break;
+            }
+        }
+    }
+}
+
+// listens to response from robot and returns what happened, 0 means unknown command, 1 means robot successfully completed command,
+// 2 means it found a mine and a new path needs to be calculated.
+int listen_to_robot(int route_index){
+    while(1){
+        readByte(hSerial, character);
+        if (strcmp(character, "Q") == 0){
+            found_mine(robot.x, robot.y, robot.direction);
+            robot.direction = (robot.direction + 2) % 4;
+            return 2;
+        }
+        if (strcmp(character, "X") == 0) {
+            printf("x has been recieved \n");
+            if(commands[route_index] == 1){
+                if(robot.direction == 0){
+                    robot.direction = 3;
+                } else {
+                    robot.direction --;
+                }
+            } else if (commands[route_index] == 2){
+                if (robot.direction == 3){
+                    robot.direction = 1;
+                } else {
+                robot.direction++;
+                }
+            }
+            update_robot_position(0);
+            return 1;
+        }
+        Sleep(100);
+    }
+}
+
 void visualize_maze(){
     gotoxy(0,1);
     int i, j;
