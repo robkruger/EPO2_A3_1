@@ -5,7 +5,7 @@
 #include <string.h>
 #include <Windows.h>
 
-#define COMPORT "COM2"
+#define COMPORT "COM3"
 #define BAUDRATE CBR_9600
 
 const int GRID_SIZE = 13;
@@ -61,7 +61,7 @@ void debug(char *message){
     printf("\33[2K\r");
     gotoxy(0, 28);
     printf(message);
-    Sleep(500);
+    Sleep(5);
 }
 
 //--------------------------------------------------------------
@@ -118,7 +118,7 @@ int readByte(HANDLE hSerial, char *buffRead) {
     {
         printf("error reading byte from input buffer \n");
     }
-    printf("Byte read from read buffer is: %c \n", buffRead[0]);
+    //printf("Byte read from read buffer is: %c \n", buffRead[0]);
     return(buffRead[0]);
 }
 
@@ -128,14 +128,17 @@ int com_changed(){
     int combithaschanged = 0;
     int i;
     readByte(hSerial, currentbit);
+    printf("current bit %c \n last recieved %c \n", currentbit, lastrecievedbit);
+
     if(strcmp(lastrecievedbit, currentbit) == 0){
+        combithaschanged = 0;
+    } else {
         combithaschanged = 1;
         for(i=0; i<32; i++){
             lastrecievedbit[i] = currentbit[i];
         }
-    } else {
-        combithaschanged = 0;
     }
+    printf("%d \n", combithaschanged);
     return(combithaschanged);
 }
 
@@ -600,7 +603,7 @@ void send_command_to_robot(int command){
     if(command == 0){ 
         //go forward
         writeByte(hSerial, "A");
-        while(com_changed() == 0 && character != "R"){
+        while(com_changed() == 0 && !strcmp(character,"R")){
             readByte(hSerial, character);
             Sleep(5);
             //this is only necessary if the error margin of recieved bytes is big.
@@ -610,85 +613,27 @@ void send_command_to_robot(int command){
     } 
     else if (command == 1){ // go left
         writeByte(hSerial, "B");
-        while(com_changed() == 0 && character != "S"){
+        while(com_changed() == 0 && !strcmp(character,"S")){
             readByte(hSerial, character);
             Sleep(5);
         }
     } 
     else if (command == 2){ // go right
         writeByte(hSerial, "C");
-        while(com_changed() == 0 && character != "T"){
+        while(com_changed() == 0 && !strcmp(character,"T")){
             readByte(hSerial, character);
             Sleep(5);
         }
-    } 
-    else if (command == 3){ // turn around
-        writeByte(hSerial, "D");
-        while(com_changed() == 0 && character != "U"){
-            readByte(hSerial, character);
-            Sleep(5);
-        }
-    } 
+    }  
     else if (command == 4){ // stop
         writeByte(hSerial, "E");
-        while(com_changed() == 0 && character != "V"){
+        while(com_changed() == 0 && !strcmp(character,"V")){
             readByte(hSerial, character);
             Sleep(5);
         }
     }
 }
 
-//this function will update the robot position in the maze accordingly to the command.
-void update_robot_position(int command){
-    if (command = 0){ //forward
-        if(robot.direction = 0){ //north
-            robot.y = robot.y - 1;
-        } else if (robot.direction = 1){ //east
-            robot.x = robot.x + 1;
-        } else if (robot.direction = 2){ //south
-            robot.y = robot.y + 1;
-        } else if (robot.direction = 3){ //west
-            robot.x = robot.x - 1;
-        }
-    } else if (command = 1){ //left
-        if(robot.direction = 0){
-            robot.y = robot.y - 1;
-            robot.direction = 3;
-        } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
-            robot.direction = 0;
-        } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
-            robot.direction = 1;
-        } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
-            robot.direction = 2;
-        }
-    } else if (command = 2){ //right
-        if(robot.direction = 0){
-            robot.y = robot.y - 1;
-            robot.direction = 1;
-        } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
-            robot.direction = 2;
-        } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
-            robot.direction = 3;
-        } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
-            robot.direction = 0;
-        }
-    } else if (command = 3){ //turn around
-        if(robot.direction = 0){
-            robot.direction = 2;
-        } else if (robot.direction = 1){
-            robot.direction = 3;
-        } else if (robot.direction = 2){
-            robot.direction = 0;
-        } else if (robot.direction = 3){
-            robot.direction = 1;
-        }
-        
 // listens to response from robot and returns what happened, 0 means unknown command, 1 means robot successfully completed command,
 // 2 means it found a mine and a new path needs to be calculated.
 int listen_to_robot(int route_index){
@@ -879,6 +824,7 @@ int main(){
             break;
         }
         make_route(n);
+        
         int i = 0;
         int response;
         char character[32];
@@ -896,6 +842,7 @@ int main(){
             }
             i++;
         }
+        n++;
     }
 
     writeByte(hSerial, "E"); //at last, send stop byte to robot to get it to stop.
