@@ -1,3 +1,8 @@
+/************************************************
+    Written by group A3-1
+    Jesse Koert, Rob Kruger, Tom Rietjens
+    C Code for the Robot of EPO-2 
+************************************************/
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -8,6 +13,9 @@
 #define COMPORT "COM3"
 #define BAUDRATE CBR_9600
 
+
+
+/********** Declaring constants and globals **************/
 const int GRID_SIZE = 13;
 
 HANDLE hSerial;
@@ -15,6 +23,19 @@ HANDLE hSerial;
 char character[32];
 int start_station, end_station;
 
+HANDLE hSerial;
+//variables
+char character[32];
+int start_station, end_station;
+
+// Stations between which a path has to be found, -1 means there is no station.
+int stations[]= {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+
+// 0 = North, 1 = East, 2 = South, 3 = West
+int direction;
+
+
+/********** Declaring Structs and methods ****************/
 struct cell {
     // Value
     int v; 
@@ -188,6 +209,70 @@ struct cell get_crossing(int i, int j){
     return maze[k][l];
 }
 
+int cells_equal(struct cell cell_1, struct cell cell_2){
+    if(cell_1.x == cell_2.x && cell_1.y == cell_2.y){
+        return 1;
+    }
+    return 0;
+}
+
+// Linked list implementation for path
+typedef struct Path_node {
+    int x, y;
+    struct Path_node *next;
+} path_t;
+
+path_t *insert_node_front(path_t *old_head, int x, int y) {
+    path_t *new_head = (path_t *)malloc(sizeof(path_t));
+    new_head->x = x;
+    new_head->y = y;
+    new_head->next = old_head;
+    return new_head;
+}
+
+void free_path(path_t *head) {
+    path_t *tmp;
+    while (head) {
+        tmp = head;
+        head = head->next;
+        free(head);
+    }
+}
+
+void print_path(path_t *head) {
+    path_t *cur = head;
+    while (cur) {
+        printf("(%d, %d)\n", cur->x, cur->y);
+        cur = cur->next;
+    }
+}
+
+
+
+
+/********** Coloured output text functions ***************/
+void red(){
+  printf("\033[0;31m");
+}
+
+void green(){
+    printf("\033[0;32m");
+}
+
+void yellow(){
+  printf("\033[0;33m");
+}
+
+void blue(){
+  printf("\033[0;34m");
+}
+
+void reset(){
+  printf("\033[0m");
+}
+
+
+/********* Input *****************************************/
 // Returns cell corresponding to the according edge
 // 0 - south, 1 - east, 2 - north, 3 - west
 void change_edge(int i, int j, int direction, int v){
@@ -254,7 +339,7 @@ void reset(){
 }
 
 void read_input(){
-    int numofblock, i, j, k, ci, cj, dir_n; //variables
+    int numofblock, i, j, k, ci, cj, dir_n;
     char dir_l;
     j = 0;
     //scans for number of blockades
@@ -286,6 +371,7 @@ void read_input(){
     end_station = stations[1];
 }
 
+/********** Maze *****************************************/
 // Initialize the maze with random values
 void initialize_maze_random(){
     int i, j;
@@ -558,41 +644,105 @@ void visualize_maze(){
     }
 }
 
-/******************************************************************************
-Written by group A3-1
-Path finding (Lee) algorithm
-******************************************************************************/
 
-// Linked list implementation for path
-typedef struct Path_node {
-    int x, y;
-    struct Path_node *next;
-} path_t;
 
-path_t *insert_node_front(path_t *old_head, int x, int y) {
-    path_t *new_head = (path_t *)malloc(sizeof(path_t));
-    new_head->x = x;
-    new_head->y = y;
-    new_head->next = old_head;
-    return new_head;
+/********** Lee's algorithm: pathfinding *****************/
+path_t *generate_path_start_2_target(int start, int target) {
+    // initialise path list
+    path_t *path = NULL;
+
+    //start at the end and work backwards
+    struct cell start_cell = get_station(start);
+    struct cell cur_cell = get_station(target);
+    struct cell next_cell;
+    path = insert_node_front(path, cur_cell.x, cur_cell.y);
+
+    while (!cells_equal(cur_cell, start_cell)) {
+        // look left, right, up, down for the cell with value lower than its own (there will always be one)
+        // Lazy evaluation allows for the statements after && to not produce an error
+        if ((cur_cell.x-1 >= 0) && (-1 < maze[cur_cell.x-1][cur_cell.y].v) && (maze[cur_cell.x-1][cur_cell.y].v < cur_cell.v)) {                    // LEFT
+            next_cell = maze[cur_cell.x-1][cur_cell.y];
+        } else if ((cur_cell.x+1 <= GRID_SIZE) && (-1 < maze[cur_cell.x+1][cur_cell.y].v) && (maze[cur_cell.x+1][cur_cell.y].v < cur_cell.v)) {     // RIGHT
+            next_cell = maze[cur_cell.x+1][cur_cell.y];
+        } else if ((cur_cell.y-1 >= 0) && (-1 < maze[cur_cell.x][cur_cell.y-1].v) && (maze[cur_cell.x][cur_cell.y-1].v < cur_cell.v)) {             // UP
+            next_cell = maze[cur_cell.x][cur_cell.y-1];
+        } else if ((cur_cell.y+1 <= GRID_SIZE) && (-1 < maze[cur_cell.x][cur_cell.y+1].v) && (maze[cur_cell.x][cur_cell.y+1].v < cur_cell.v)) {     // DOWN
+            next_cell = maze[cur_cell.x][cur_cell.y+1];
+        } else {
+            printf("no cell in maze with lower value found");
+            break;
+        }
+        path = insert_node_front(path, next_cell.x, next_cell.y);
+        cur_cell = next_cell;
+    }
+    // path = insert_node_front(path, start_cell.x, start_cell.y);
+    return path;
 }
 
-void free_path(path_t *head) {
-    path_t *tmp;
-    while (head) {
-        tmp = head;
-        head = head->next;
-        free(head);
+int *find_possible_neighbors(int i, int j){
+    // returns a 1D array for i,j that are possible neighbours
+
+    //allocate memory 4 x (i and j) = 8
+    int *n = (int *)malloc(4*2 * sizeof(int));
+    // initialise all to -1
+    for (int k =0; k < 8; k++) {
+        n[k] = -1;
+    }
+    // check indecies lie within the matrix and are unassigned (value = 0)
+    if (0 <= i-1){                  // LEFT
+        if (maze[i-1][j].v == 0) {
+            n[0] = i-1;
+            n[1] = j;
+        }
+    } 
+    if (i+1 <= GRID_SIZE){          // RIGHT
+        if (maze[i+1][j].v == 0) {
+            n[2] = i+1;
+            n[3] = j;
+        } 
+    }
+    if (0 <= j-1){                  // UP
+        if (maze[i][j-1].v == 0) {
+            n[4] = i;
+            n[5] = j-1;
+        } 
+    }
+    if (j+1 <= GRID_SIZE){          // DOWN
+        if (maze[i][j+1].v == 0) {
+            n[6] = i;
+            n[7] = j+1;
+        } 
+    } 
+    return n;
+}
+
+void lee_start_2_target(int start_i, int start_j,
+                        int target_i, int target_j){
+    int counter = 1;
+    int *neigbours;
+    maze[start_i][start_j].v = counter;
+
+
+    while (maze[target_i][target_j].v == 0) {
+        // increment the neigbours of all cells with value = counter:
+        for (int j=0; j<GRID_SIZE; j++){
+            for (int i=0; i<GRID_SIZE; i++){
+                if (maze[j][i].v == counter){
+                    neigbours = find_possible_neighbors(j, i);
+                    for (int k=0; k < 4; k++){
+                        if (neigbours[k*2] != -1){
+                            maze[neigbours[k*2]][neigbours[k*2+1]].v = counter+1;
+                        }
+                    }
+                    free(neigbours);
+                }
+            }
+        }
+        counter++;
     }
 }
 
-void print_path(path_t *head) {
-    path_t *cur = head;
-    while (cur) {
-        printf("(%d, %d)\n", cur->x, cur->y);
-        cur = cur->next;
-    }
-}
+/********** Generating commands **************************/
 
 void write_instruc_from_path_to(int *buffer, path_t *path) {
     /*  Produce an array of instructions that can be sent to the robot
@@ -695,101 +845,7 @@ void write_instruc_from_path_to(int *buffer, path_t *path) {
     // but only the odd ones represent a crossing! 
 }
 
-
-path_t *generate_path_start_2_target(int start, int target) {
-    // initialise path list
-    path_t *path = NULL;
-
-    //start at the end and work backwards
-    struct cell start_cell = get_station(start);
-    struct cell cur_cell = get_station(target);
-    struct cell next_cell;
-    path = insert_node_front(path, cur_cell.x, cur_cell.y);
-
-    while (!cells_equal(cur_cell, start_cell)) {
-        // look left, right, up, down for the cell with value lower than its own (there will always be one)
-        // Lazy evaluation allows for the statements after && to not produce an error
-        if ((cur_cell.x-1 >= 0) && (-1 < maze[cur_cell.x-1][cur_cell.y].v) && (maze[cur_cell.x-1][cur_cell.y].v < cur_cell.v)) {                    // LEFT
-            next_cell = maze[cur_cell.x-1][cur_cell.y];
-        } else if ((cur_cell.x+1 <= GRID_SIZE) && (-1 < maze[cur_cell.x+1][cur_cell.y].v) && (maze[cur_cell.x+1][cur_cell.y].v < cur_cell.v)) {     // RIGHT
-            next_cell = maze[cur_cell.x+1][cur_cell.y];
-        } else if ((cur_cell.y-1 >= 0) && (-1 < maze[cur_cell.x][cur_cell.y-1].v) && (maze[cur_cell.x][cur_cell.y-1].v < cur_cell.v)) {             // UP
-            next_cell = maze[cur_cell.x][cur_cell.y-1];
-        } else if ((cur_cell.y+1 <= GRID_SIZE) && (-1 < maze[cur_cell.x][cur_cell.y+1].v) && (maze[cur_cell.x][cur_cell.y+1].v < cur_cell.v)) {     // DOWN
-            next_cell = maze[cur_cell.x][cur_cell.y+1];
-        } else {
-            printf("no cell in maze with lower value found");
-            break;
-        }
-        path = insert_node_front(path, next_cell.x, next_cell.y);
-        cur_cell = next_cell;
-    }
-    // path = insert_node_front(path, start_cell.x, start_cell.y);
-    return path;
-}
-
-int *find_possible_neighbors(int i, int j){
-    // returns a 1D array for i,j that are possible neighbours
-
-    //allocate memory 4 x (i and j) = 8
-    int *n = (int *)malloc(4*2 * sizeof(int));
-    // initialise all to -1
-    for (int k =0; k < 8; k++) {
-        n[k] = -1;
-    }
-    // check indecies lie within the matrix and are unassigned (value = 0)
-    if (0 <= i-1){                  // LEFT
-        if (maze[i-1][j].v == 0) {
-            n[0] = i-1;
-            n[1] = j;
-        }
-    } 
-    if (i+1 <= GRID_SIZE){          // RIGHT
-        if (maze[i+1][j].v == 0) {
-            n[2] = i+1;
-            n[3] = j;
-        } 
-    }
-    if (0 <= j-1){                  // UP
-        if (maze[i][j-1].v == 0) {
-            n[4] = i;
-            n[5] = j-1;
-        } 
-    }
-    if (j+1 <= GRID_SIZE){          // DOWN
-        if (maze[i][j+1].v == 0) {
-            n[6] = i;
-            n[7] = j+1;
-        } 
-    } 
-    return n;
-}
-
-void lee_start_2_target(int start_i, int start_j,
-                        int target_i, int target_j){
-    int counter = 1;
-    int *neigbours;
-    maze[start_i][start_j].v = counter;
-
-
-    while (maze[target_i][target_j].v == 0) {
-        // increment the neigbours of all cells with value = counter:
-        for (int j=0; j<GRID_SIZE; j++){
-            for (int i=0; i<GRID_SIZE; i++){
-                if (maze[j][i].v == counter){
-                    neigbours = find_possible_neighbors(j, i);
-                    for (int k=0; k < 4; k++){
-                        if (neigbours[k*2] != -1){
-                            maze[neigbours[k*2]][neigbours[k*2+1]].v = counter+1;
-                        }
-                    }
-                    free(neigbours);
-                }
-            }
-        }
-        counter++;
-    }
-}
+/********* Wireless communication ************************/
 
 int main(){
     srand(time(NULL));
