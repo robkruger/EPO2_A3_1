@@ -427,6 +427,7 @@ void update_robot_position(int command){
             robot.x = robot.x - 1;
         }
     }
+    visualize_maze(); 
 }
 
 void initialize_maze(){
@@ -671,11 +672,14 @@ int listen_to_robot(int route_index){
         }
         if (strcmp(character, "X") == 0) {
             printf("x has been recieved \n");
-            update_robot_position(commands[route_index]);
+            update_robot_position(0);
             return 1;
         }
+        if (strcmp(character, "L") == 0){
+            update_robot_position(commands[route_index]);           
+        }
 
-        Sleep(1000);
+        Sleep(500);
 
     }
 
