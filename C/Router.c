@@ -133,10 +133,13 @@ int com_changed(){
     if(strcmp(lastrecievedbit, currentbit) == 0){
         combithaschanged = 0;
     } else {
+        combithaschanged = 0;     
+    } else {
         combithaschanged = 1;
-        for(i=0; i<32; i++){
-            lastrecievedbit[i] = currentbit[i];
-        }
+        // for(i=0; i<32; i++){
+        //     lastrecievedbit[i] = currentbit[i];
+        // }
+        strcpy(lastrecievedbit, currentbit);
     }
     printf("%d \n", combithaschanged);
     return(combithaschanged);
@@ -603,8 +606,8 @@ void send_command_to_robot(int command){
     if(command == 0){ 
         //go forward
         writeByte(hSerial, "A");
-        while(com_changed() == 0 && !strcmp(character,"R")){
-            readByte(hSerial, character);
+        while(com_changed() == 0 && !strcmp(lastrecievedbit, "R")){
+            // readByte(hSerial, character);
             Sleep(5);
             //this is only necessary if the error margin of recieved bytes is big.
            // if(com_changed()==0 && readByte(hSerial, character) != "R"){
@@ -613,22 +616,22 @@ void send_command_to_robot(int command){
     } 
     else if (command == 1){ // go left
         writeByte(hSerial, "B");
-        while(com_changed() == 0 && !strcmp(character,"S")){
-            readByte(hSerial, character);
+        while(com_changed() == 0 && !strcmp(lastrecievedbit, "S")){
+            // readByte(hSerial, character);
             Sleep(5);
         }
     } 
     else if (command == 2){ // go right
         writeByte(hSerial, "C");
-        while(com_changed() == 0 && !strcmp(character,"T")){
-            readByte(hSerial, character);
+        while(com_changed() == 0 && !strcmp(lastrecievedbit, "T")){
+            // readByte(hSerial, character);
             Sleep(5);
         }
-    }  
+    } 
     else if (command == 4){ // stop
         writeByte(hSerial, "E");
-        while(com_changed() == 0 && !strcmp(character,"V")){
-            readByte(hSerial, character);
+        while(com_changed() == 0 && !strcmp(lastrecievedbit, "V")){
+            //readByte(hSerial, character);
             Sleep(5);
         }
     }
