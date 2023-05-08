@@ -639,9 +639,6 @@ int listen_to_robot(int route_index){
             update_robot_position(0);
             return 1;
         }
-        if (strcmp(character, "L") == 0){
-            update_robot_position(commands[route_index]);           
-        }
 
         Sleep(500);
 
@@ -770,10 +767,7 @@ void lee_start_2_target(int start_i, int start_j,
 int main(){
     srand(time(NULL));
 
-    initialize_maze();
-
-    robot.x = 0;
-    robot.y = 4;
+    initialize_maze_test();
 
     char byteBuffer[BUFSIZ+1];
 
@@ -805,8 +799,11 @@ int main(){
 
     read_input();
 
-    struct cell station = get_station(start_station);
-    lee_start_2_target(robot.x, robot.y, station.x, station.y);
+    struct cell start_station_cell = get_station(start_station);
+    struct cell end_station_cell = get_station(end_station);
+    robot.x = start_station_cell.x;
+    robot.y = start_station_cell.y;
+    // lee_start_2_target(robot.x, robot.y, end_station_cell.x, end_station_cell.y);
 
     visualize_maze();
 
