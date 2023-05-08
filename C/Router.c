@@ -12,7 +12,8 @@ const int GRID_SIZE = 13;
 
 HANDLE hSerial;
 //variables
-char lastrecievedbit[32] = "x";
+char lastrecievedbit[32] = "P";
+    char character[32];
 int start_station, end_station;
 
 struct cell {
@@ -128,19 +129,28 @@ int com_changed(){
     int combithaschanged = 0;
     int i;
     readByte(hSerial, currentbit);
+    printf("testing current bit %c \n testing last recieved %c \n", currentbit, lastrecievedbit);
+
+    if (currentbit[0]== '\0'){
+        return 0;
+    }
     printf("current bit %c \n last recieved %c \n", currentbit, lastrecievedbit);
 
     if(strcmp(lastrecievedbit, currentbit) == 0){
         combithaschanged = 0;     
-    } else {
-        combithaschanged = 1;
+    //} else if (strcmp(lastrecievedbit, "R") || ) {
+    //    combithaschanged = 1;
         // for(i=0; i<32; i++){
         //     lastrecievedbit[i] = currentbit[i];
         // }
+
+    } else {
+        combithaschanged = 1;
         strcpy(lastrecievedbit, currentbit);
     }
     printf("%d \n", combithaschanged);
     return(combithaschanged);
+    Sleep(250);
 }
 
 
@@ -600,37 +610,50 @@ void make_route(int station_index){
 //these functions can be called for the instructions to be send to the robot
 //also a handshake functionality is implementec
 void send_command_to_robot(int command){
-    char character[32];
+
     if(command == 0){ 
         //go forward
         writeByte(hSerial, "A");
-        while(com_changed() == 0 && !strcmp(lastrecievedbit, "R")){
-            // readByte(hSerial, character);
-            Sleep(5);
+        while(1){
+            readByte(hSerial, character);
+            Sleep(100);
+            if (strcmp(character, "R") == 0){
+                break;
+            }
             //this is only necessary if the error margin of recieved bytes is big.
            // if(com_changed()==0 && readByte(hSerial, character) != "R"){
            //     writeByte(hSerial, "A"); }
+        
         }
     } 
     else if (command == 1){ // go left
         writeByte(hSerial, "B");
-        while(com_changed() == 0 && !strcmp(lastrecievedbit, "S")){
-            // readByte(hSerial, character);
-            Sleep(5);
+        while(1){
+            readByte(hSerial, character);
+            Sleep(100);
+            if (strcmp(character, "S")==0){
+            break;
+            }
         }
     } 
     else if (command == 2){ // go right
         writeByte(hSerial, "C");
-        while(com_changed() == 0 && !strcmp(lastrecievedbit, "T")){
-            // readByte(hSerial, character);
-            Sleep(5);
+        while(1){
+            if (strcmp(character, "T") == 0){
+                break;
+            }
+            readByte(hSerial, character);
+            Sleep(100);
         }
     } 
     else if (command == 4){ // stop
         writeByte(hSerial, "E");
-        while(com_changed() == 0 && !strcmp(lastrecievedbit, "V")){
-            //readByte(hSerial, character);
-            Sleep(5);
+        while(1){
+            if (strcmp(character, "V") == 0){
+                break;
+            }
+            readByte(hSerial, character);
+            Sleep(100);
         }
     }
 }
@@ -638,21 +661,24 @@ void send_command_to_robot(int command){
 // listens to response from robot and returns what happened, 0 means unknown command, 1 means robot successfully completed command,
 // 2 means it found a mine and a new path needs to be calculated.
 int listen_to_robot(int route_index){
-    char message[32];
-    while(!com_changed()){
-        readByte(hSerial, message);
-        Sleep(5);
-    }
-    if(!strcmp(message, "Q")){
+    //char message[32];
+    while(1){
+        readByte(hSerial, character);
+        if (strcmp(character, "Q") == 0){
         found_mine(robot.x, robot.y, robot.direction);
         robot.direction = (robot.direction + 2) % 4;
         return 2;
+        }
+        if (strcmp(character, "X") == 0) {
+            printf("x has been recieved \n");
+            update_robot_position(commands[route_index]);
+            return 1;
+        }
+
+        Sleep(1000);
+
     }
-    else if (!strcmp(message, "X"))
-    {
-        update_robot_position(commands[route_index]);
-        return 1;
-    }
+
     return 0;
 }
 
@@ -831,7 +857,9 @@ int main(){
         char character[32];
         while(commands[i+1] != -1){ //loop while there are actually commands
             send_command_to_robot(commands[i]);
+            printf("sendcommand is gerund");
             response = listen_to_robot(i);
+            printf("an response has been recieved");
             if(response == 0){
                 perror("Unknown command send by robot!");
             }
@@ -841,6 +869,7 @@ int main(){
                 lee_start_2_target(robot.x, robot.y, station.x, station.y);
                 make_route(n);
             }
+        
             i++;
         }
         n++;
