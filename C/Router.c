@@ -625,18 +625,12 @@ void send_command_to_robot(int command){
     if(command == 0){ 
         //go forward
         writeByte(hSerial, "A");
-<<<<<<< HEAD
-        while(com_changed() == 0 && !strcmp(lastrecievedbit, "R")){
-            // readByte(hSerial, character);
-            Sleep(5);
-=======
         while(1){
             readByte(hSerial, character);
             Sleep(100);
             if (strcmp(character, "R") == 0){
                 break;
             }
->>>>>>> main
             //this is only necessary if the error margin of recieved bytes is big.
            // if(com_changed()==0 && readByte(hSerial, character) != "R"){
            //     writeByte(hSerial, "A"); }
@@ -645,50 +639,32 @@ void send_command_to_robot(int command){
     } 
     else if (command == 1){ // go left
         writeByte(hSerial, "B");
-<<<<<<< HEAD
-        while(com_changed() == 0 && !strcmp(lastrecievedbit, "S")){
-            // readByte(hSerial, character);
-            Sleep(5);
-=======
         while(1){
             readByte(hSerial, character);
             Sleep(100);
             if (strcmp(character, "S")==0){
             break;
             }
->>>>>>> main
         }
     } 
     else if (command == 2){ // go right
         writeByte(hSerial, "C");
-<<<<<<< HEAD
-        while(com_changed() == 0 && !strcmp(lastrecievedbit, "T")){
-            // readByte(hSerial, character);
-            Sleep(5);
-=======
         while(1){
             if (strcmp(character, "T") == 0){
                 break;
             }
             readByte(hSerial, character);
             Sleep(100);
->>>>>>> main
         }
     } 
     else if (command == 4){ // stop
         writeByte(hSerial, "E");
-<<<<<<< HEAD
-        while(com_changed() == 0 && !strcmp(lastrecievedbit, "V")){
-            //readByte(hSerial, character);
-            Sleep(5);
-=======
         while(1){
             if (strcmp(character, "V") == 0){
                 break;
             }
             readByte(hSerial, character);
             Sleep(100);
->>>>>>> main
         }
     }
 }
