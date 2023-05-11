@@ -44,6 +44,9 @@ struct cell {
 // Matrix represantation of the maze
 struct cell maze[13][13];
 
+struct cell mines[40];
+int number_of_mines = 0;
+
 // Returns the cell corresponding to the according station
 struct cell get_station(int station){
     if(station == 1){
@@ -177,6 +180,10 @@ void blue(){
   printf("\033[0;34m");
 }
 
+void purple(){
+  printf("\033[0;35m");
+}
+
 void reset(){
   printf("\033[0m");
 }
@@ -262,6 +269,14 @@ void initialize_maze(){
         maze[2][i].v = 0;
         maze[10][i].v = 0;
     }
+    if(number_of_mines != 0){
+        int i;
+        for(i = 0; i <= number_of_mines; i++){
+            int x = mines[i].x;
+            int y = mines[i].y;
+            maze[x][y].v = -2;
+        }
+    }
 }
 
 // Initialize the maze with random values
@@ -338,7 +353,7 @@ void visualize_maze(){
         for(j = 0; j < 13; j++){
             int nDigits = 1;
             if(maze[j][i].v != 0){
-                if(maze[j][i].v != -1){
+                if(maze[j][i].v >= 0){
                     if(robot.x == j && robot.y == i){
                         blue();
                     }
@@ -351,8 +366,11 @@ void visualize_maze(){
                     if(robot.x == j && robot.y == i){
                         blue();
                     }
-                    else{
+                    else if(maze[j][i].v == -1){
                         red();
+                    }
+                    else if(maze[j][i].v == -2){
+                        purple();
                     }
                     nDigits = 2;
                 }
@@ -368,7 +386,19 @@ void visualize_maze(){
             if(nDigits != 2){
                 printf(" ");
             }
-            printf("%d", maze[j][i].v);
+            if(robot.x == j && robot.y == i){
+                if(robot.direction == 0){
+                    printf("^");
+                } else if(robot.direction == 1) {
+                    printf(">");
+                } else if(robot.direction == 2) {
+                    printf("v");
+                } else {
+                    printf("<");
+                }
+            } else {
+                printf("%d", maze[j][i].v);
+            }
             reset();
             printf(" ! ");
         }
@@ -394,62 +424,60 @@ void found_mine(int x, int y, int direction){ //?
     else if(direction == 3){
         x -= 1;
     }
-    maze[x][y].v = -1;
+    maze[x][y].v = -2;
+    mines[number_of_mines] = maze[x][y];
+    number_of_mines++;
 }
 
 //this function will update the robot position in the maze accordingly to the command.
 void update_robot_position(int command){
     if (command == 0){
         if(robot.direction == 0){
-            robot.y = robot.y - 2;
+            robot.y = robot.y - 1;
         } else if (robot.direction == 1){
-            robot.x = robot.x + 2;
+            robot.x = robot.x + 1;
         } else if (robot.direction == 2){
-            robot.y = robot.y + 2;
+            robot.y = robot.y + 1;
         } else if (robot.direction == 3){
-            robot.x = robot.x - 2;
+            robot.x = robot.x - 1;
         }
-    } else if (command == 1){
+    } else if (command == 1){ //left
         if(robot.direction == 0){
-            robot.y = robot.y - 2;
+            robot.x = robot.x - 1;
         } else if (robot.direction == 1){
-            robot.x = robot.x + 2;
+            robot.y = robot.y - 1;
         } else if (robot.direction == 2){
-            robot.y = robot.y + 2;
+            robot.x = robot.x + 1;
         } else if (robot.direction == 3){
-            robot.x = robot.x - 2;
+            robot.y = robot.y + 1;
         }
-    } else if (command == 2){
+    } else if (command == 2){ //right
         if(robot.direction == 0){
-            robot.y = robot.y - 2;
+            robot.x = robot.x + 1;
         } else if (robot.direction == 1){
-            robot.x = robot.x + 2;
+            robot.y = robot.y + 1;
         } else if (robot.direction == 2){
-            robot.y = robot.y + 2;
+            robot.x = robot.x - 1;
         } else if (robot.direction == 3){
-            robot.x = robot.x - 2;
-        }
-    } else if (command == 3){
-        if(robot.direction == 0){
-            robot.y = robot.y - 2;
-        } else if (robot.direction == 1){
-            robot.x = robot.x + 2;
-        } else if (robot.direction == 2){
-            robot.y = robot.y + 2;
-        } else if (robot.direction == 3){
-            robot.x = robot.x - 2;
+            robot.y = robot.y - 1;
         }
     }
 }
 
 
 /********** Lee's algorithm: pathfinding *****************/
-path_t *generate_path_start_2_target(int start, int target) {
+path_t *generate_path_start_2_target(int start, int target, int reroute) {
     // initialise path list
     path_t *path = NULL;
 
     //start at the end and work backwards
-    struct cell start_cell = get_station(start);
+    struct cell start_cell;
+    if(!reroute){
+        start_cell = get_station(start);
+    } else {
+        start_cell.x = robot.x;
+        start_cell.y = robot.y;
+    }
     struct cell cur_cell = get_station(target);
     struct cell next_cell;
     path = insert_node_front(path, cur_cell.x, cur_cell.y);
@@ -527,7 +555,7 @@ void lee_start_2_target(int start_i, int start_j,
                 if (maze[j][i].v == counter){
                     neigbours = find_possible_neighbors(j, i);
                     for (int k=0; k < 4; k++){
-                        if (neigbours[k*2] != -1){
+                        if (neigbours[k*2] >= 0){
                             maze[neigbours[k*2]][neigbours[k*2+1]].v = counter+1;
                         }
                     }
@@ -541,7 +569,7 @@ void lee_start_2_target(int start_i, int start_j,
 
 /********** Generating commands **************************/
 
-void write_instruc_from_path_to(int *buffer, path_t *path) {
+void write_instruc_from_path_to(int *buffer, path_t *path, int reroute) {
     /*  Produce an array of instructions that can be sent to the robot
         we're using an array of integers to represent instructions:
             0: Continue straight
@@ -557,18 +585,31 @@ void write_instruc_from_path_to(int *buffer, path_t *path) {
 
     // finding the starting direction
     // must start from a station, so we can just test for the edge that its on (assume dir is inwards)
-    if (path->x == 0) {
-        dir = 'E';
-        robot.direction = 1;
-    } else if (path->x == GRID_SIZE-1) {
-        dir = 'W';
-        robot.direction = 3;
-    } else if (path->y == 0) {
-        dir = 'S';
-        robot.direction = 2;
-    } else {
-        dir = 'N';
-        robot.direction = 0;
+    if(!reroute){
+        if (path->x == 0) {
+            dir = 'E';
+            robot.direction = 1;
+        } else if (path->x == GRID_SIZE-1) {
+            dir = 'W';
+            robot.direction = 3;
+        } else if (path->y == 0) {
+            dir = 'S';
+            robot.direction = 2;
+        } else {
+            dir = 'N';
+            robot.direction = 0;
+        }
+    }
+    else {
+        if(robot.direction == 0){
+            dir = 'N';
+        } else if(robot.direction == 1){
+            dir = 'E';
+        } else if(robot.direction == 2){
+            dir = 'S';
+        } else if(robot.direction == 3){
+            dir = 'W';
+        }
     }
 
     // translate to instructions
@@ -777,12 +818,6 @@ int listen_to_robot(int command){
     while(1){
         readByte(hSerial, character);
         if (strcmp(character, "Q") == 0){
-            found_mine(robot.x, robot.y, robot.direction);
-            robot.direction = (robot.direction + 2) % 4;
-            return 2;
-        }
-        if (strcmp(character, "X") == 0) {
-            printf("x has been recieved \n");
             if(command == 1){
                 if(robot.direction == 0){
                     robot.direction = 3;
@@ -791,12 +826,31 @@ int listen_to_robot(int command){
                 }
             } else if (command == 2){
                 if (robot.direction == 3){
-                    robot.direction = 1;
+                    robot.direction = 0;
                 } else {
                 robot.direction++;
                 }
             }
+            found_mine(robot.x, robot.y, robot.direction);
+            robot.direction = (robot.direction + 2) % 4; // Turn around
+            return 2;
+        }
+        if (strcmp(character, "X") == 0) {
+            printf("x has been recieved \n");
             update_robot_position(command);
+            if(command == 1){
+                if(robot.direction == 0){
+                    robot.direction = 3;
+                } else {
+                    robot.direction--;
+                }
+            } else if (command == 2){
+                if (robot.direction == 3){
+                    robot.direction = 0;
+                } else {
+                robot.direction++;
+                }
+            }
             return 1;
         }
         Sleep(100);
@@ -851,8 +905,8 @@ int main(){
         robot.x = starting_cell.x;
         robot.y = starting_cell.y;
         lee_start_2_target(starting_cell.x, starting_cell.y, end_cell.x, end_cell.y);
-        path = generate_path_start_2_target(start_station, end_station);
-        write_instruc_from_path_to(commands, path);
+        path = generate_path_start_2_target(start_station, end_station, 0);
+        write_instruc_from_path_to(commands, path, 0);
         
         int i = 0;
         int response;
@@ -861,9 +915,20 @@ int main(){
             visualize_maze();
             send_command_to_robot(commands[i]);
             response = listen_to_robot(commands[i]);
-            debug("an response has been recieved");
             if(response == 0){
                 perror("Unknown command send by robot!");
+            }
+            else if(response == 1){
+                debug("Sensors all black");
+            }
+            else if(response == 2){
+                debug("Found mine");
+                memset(commands, 0, sizeof commands);
+                initialize_maze();
+                lee_start_2_target(robot.x, robot.y, end_cell.x, end_cell.y);
+                path = generate_path_start_2_target(start_station, end_station, 1);
+                write_instruc_from_path_to(commands, path, 1);
+                i = -1;
             }
             // else if(response == 2){
             //     initialize_maze_test();
