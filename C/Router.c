@@ -551,7 +551,7 @@ void write_commands(path_t *path) {
             0: Continue straight
             1: Turn left
             2: Turn right
-            3: stop     
+            4: stop     
             
         we also need to keep track of the robot's direction: N, E, S, W */ 
     
@@ -658,17 +658,13 @@ void write_commands(path_t *path) {
     }
     commands[(i/2)+1] = 4;
 
-    printf("commands: \n");
-    i = 0;
-    while (commands[i] != 4) {
-        printf("%d, ", commands[i++]);
-    }
-    printf("%d\n", commands[i]);
+    print_commands();
 }
 
 void make_route(int start, int target) {
     path_t *path;
-
+    printf("Initialising maze...");
+    initialize_maze();
     printf("performing Lee algorithm...\n");
     lee_start_2_target(get_station(start), get_station(target));
     visualize_maze();
@@ -679,10 +675,11 @@ void make_route(int start, int target) {
 }
 
 void print_commands() {
-    int i;
-    for (i=0;i<30;i++) {
-        printf("%d\n", commands[i]);
+    int i = 0;
+    while (commands[i] != 4) {
+        printf("%d, ", commands[i++]);
     }
+    printf("%d\n", commands[i]);
 }
 
 /********* Wireless communication ************************/
@@ -870,14 +867,12 @@ int main(){
             break;
         }
 
-        path_t *path;
         struct cell starting_cell = get_station(start_station);
         struct cell end_cell = get_station(end_station);
         robot.x = starting_cell.x;
         robot.y = starting_cell.y;
-        lee_start_2_target(starting_cell.x, starting_cell.y, end_cell.x, end_cell.y);
-        path = generate_path_start_2_target(start_station, end_station);
-        write_instruc_from_path_to(commands, path);
+
+        make_route(start_station, end_station);
         
         int i = 0;
         int response;
