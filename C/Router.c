@@ -342,7 +342,7 @@ void initialize_maze_test(){
 }
 
 void visualize_maze(){
-    gotoxy(0,1);
+    // gotoxy(0,1);
     int i, j;
     for(j = 0; j < 13; j++){
         printf("-----");
@@ -466,22 +466,21 @@ void update_robot_position(int command){
 
 
 /********** Lee's algorithm: pathfinding *****************/
-path_t *generate_path_start_2_target(int start, int target, int reroute) {
+
+
+path_t *generate_path(struct cell start_cell, struct cell target_cell, int reroute) {
     // initialise path list
     path_t *path = NULL;
 
     //start at the end and work backwards
-    struct cell start_cell;
-    if(!reroute){
-        start_cell = get_station(start);
-    } else {
+    if(reroute){
         start_cell.x = robot.x;
         start_cell.y = robot.y;
     }
-    struct cell cur_cell = get_station(target);
+
+    struct cell cur_cell = target_cell;
     struct cell next_cell;
     path = insert_node_front(path, cur_cell.x, cur_cell.y);
-
     while (!cells_equal(cur_cell, start_cell)) {
         // look left, right, up, down for the cell with value lower than its own (there will always be one)
         // Lazy evaluation allows for the statements after && to not produce an error
@@ -494,7 +493,7 @@ path_t *generate_path_start_2_target(int start, int target, int reroute) {
         } else if ((cur_cell.y+1 <= GRID_SIZE) && (-1 < maze[cur_cell.x][cur_cell.y+1].v) && (maze[cur_cell.x][cur_cell.y+1].v < cur_cell.v)) {     // DOWN
             next_cell = maze[cur_cell.x][cur_cell.y+1];
         } else {
-            printf("no cell in maze with lower value found");
+            printf("no cell in maze with lower value found\n");
             break;
         }
         path = insert_node_front(path, next_cell.x, next_cell.y);
@@ -541,19 +540,23 @@ int *find_possible_neighbors(int i, int j){
     return n;
 }
 
-void lee_start_2_target(int start_i, int start_j,
-                        int target_i, int target_j){
+void lee_start_2_target(struct cell start, struct cell target){
     int counter = 1;
     int *neigbours;
-    maze[start_i][start_j].v = counter;
+    maze[start.x][start.y].v = counter;
 
 
-    while (maze[target_i][target_j].v == 0) {
+    while (maze[target.x][target.y].v == 0) {
+        // printf("%d, %d \n", target.x, target.y);
         // increment the neigbours of all cells with value = counter:
         for (int j=0; j<GRID_SIZE; j++){
             for (int i=0; i<GRID_SIZE; i++){
                 if (maze[j][i].v == counter){
                     neigbours = find_possible_neighbors(j, i);
+                    // for (int l=0; l<8; l++) {
+                    //     printf("%d, ", neigbours[l]);
+                    // }
+                    // printf("\n");
                     for (int k=0; k < 4; k++){
                         if (neigbours[k*2] >= 0){
                             maze[neigbours[k*2]][neigbours[k*2+1]].v = counter+1;
@@ -569,19 +572,20 @@ void lee_start_2_target(int start_i, int start_j,
 
 /********** Generating commands **************************/
 
-void write_instruc_from_path_to(int *buffer, path_t *path, int reroute) {
+void write_commands(path_t *path, int reroute) {
     /*  Produce an array of instructions that can be sent to the robot
         we're using an array of integers to represent instructions:
             0: Continue straight
             1: Turn left
             2: Turn right
-            3: stop     
+            4: stop     
             
         we also need to keep track of the robot's direction: N, E, S, W */ 
     
     char dir;
     path_t *cur = path;
     int i = 0;
+    int buffer[200] = {0};
 
     // finding the starting direction
     // must start from a station, so we can just test for the edge that its on (assume dir is inwards)
@@ -613,7 +617,7 @@ void write_instruc_from_path_to(int *buffer, path_t *path, int reroute) {
     }
 
     // translate to instructions
-    while (cur->next) {
+    while (cur->next) {  
         if (cur->x < cur->next->x) {
             switch (dir) {
                 case 'E':
@@ -626,7 +630,7 @@ void write_instruc_from_path_to(int *buffer, path_t *path, int reroute) {
                     buffer[i++] = 2;
                     break;
                 default:
-                    buffer[i++] = 3;
+                    buffer[i++] = 4;
             }
             dir = 'E';
         } else if (cur->x > cur->next->x) {
@@ -641,7 +645,7 @@ void write_instruc_from_path_to(int *buffer, path_t *path, int reroute) {
                     buffer[i++] = 1;
                     break;
                 default:
-                    buffer[i++] = 3;
+                    buffer[i++] = 4;
             }
             dir = 'W';
         } else if (cur->y < cur->next->y) {
@@ -656,7 +660,7 @@ void write_instruc_from_path_to(int *buffer, path_t *path, int reroute) {
                     buffer[i++] = 1;
                     break;
                 default:
-                    buffer[i++] = 3;
+                    buffer[i++] = 4;
             }
             dir = 'S';
         } else if (cur->y > cur->next->y) {
@@ -671,11 +675,11 @@ void write_instruc_from_path_to(int *buffer, path_t *path, int reroute) {
                     buffer[i++] = 2;
                     break;
                 default:
-                    buffer[i++] = 3;
+                    buffer[i++] = 4;
             }
             dir = 'N';
         } else {
-            buffer[i++] = 3;
+            buffer[i++] = 4;
         }
         cur = cur->next;
     } 
@@ -685,6 +689,37 @@ void write_instruc_from_path_to(int *buffer, path_t *path, int reroute) {
 
     // we now have every possible transition in the matrix, 
     // but only the odd ones represent a crossing! 
+    i=0;
+    while (buffer[i] != 4) {
+        if (i%2 == 0) {
+            commands[i/2] = buffer[i];
+        }
+        i++;
+    }
+    commands[(i/2)+1] = 4;
+
+    print_commands();
+}
+
+void make_route(int start, int target) {
+    path_t *path;
+    printf("Initialising maze...");
+    initialize_maze();
+    printf("performing Lee algorithm...\n");
+    lee_start_2_target(get_station(start), get_station(target));
+    visualize_maze();
+    printf("generating path...\n");
+    path = generate_path(get_station(start), get_station(target));
+    printf("writing commands...\n");
+    write_commands(path);
+}
+
+void print_commands() {
+    int i = 0;
+    while (commands[i] != 4) {
+        printf("%d, ", commands[i++]);
+    }
+    printf("%d\n", commands[i]);
 }
 
 /********* Wireless communication ************************/
@@ -863,33 +898,19 @@ int main(){
 
     read_input();
 
-    char byteBuffer[BUFSIZ+1];
-
-    //----------------------------------------------------------
-    // Open COMPORT for reading and writing
-    //----------------------------------------------------------
-    hSerial = CreateFile(COMPORT,
-        GENERIC_READ | GENERIC_WRITE,
-        0,
-        0,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        0
-    );
-
-    if(hSerial == INVALID_HANDLE_VALUE){
-        if(GetLastError()== ERROR_FILE_NOT_FOUND){
-            //serial port does not exist. Inform user.
-            printf(" serial port does not exist \n");
-        }
-        //some other error occurred. Inform user.
-        printf(" some other error occured. Inform user.\n");
-    }
+    // char byteBuffer[BUFSIZ+1];
 
     // //----------------------------------------------------------
-    // // Initialize the parameters of the COM port
-    initSio(hSerial);
+    // // Open COMPORT for reading and writing
     // //----------------------------------------------------------
+    // hSerial = CreateFile(COMPORT,
+    //     GENERIC_READ | GENERIC_WRITE,
+    //     0,
+    //     0,
+    //     OPEN_EXISTING,
+    //     FILE_ATTRIBUTE_NORMAL,
+    //     0
+    // );
 
 
     //this piece of code will send the commands to the robot
@@ -899,14 +920,12 @@ int main(){
             break;
         }
 
-        path_t *path;
         struct cell starting_cell = get_station(start_station);
         struct cell end_cell = get_station(end_station);
         robot.x = starting_cell.x;
         robot.y = starting_cell.y;
-        lee_start_2_target(starting_cell.x, starting_cell.y, end_cell.x, end_cell.y);
-        path = generate_path_start_2_target(start_station, end_station, 0);
-        write_instruc_from_path_to(commands, path, 0);
+
+        make_route(start_station, end_station);
         
         int i = 0;
         int response;
