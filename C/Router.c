@@ -10,7 +10,7 @@
 #include <string.h>
 #include <Windows.h>
 
-#define COMPORT "COM3"
+#define COMPORT "COM2"
 #define BAUDRATE CBR_9600
 
 
@@ -399,49 +399,45 @@ void found_mine(int x, int y, int direction){ //?
 
 //this function will update the robot position in the maze accordingly to the command.
 void update_robot_position(int command){
-    if (command = 0){
-        if(robot.direction = 0){
-            robot.y = robot.y - 1;
-        } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
-        } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
-        } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
+    if (command == 0){
+        if(robot.direction == 0){
+            robot.y = robot.y - 2;
+        } else if (robot.direction == 1){
+            robot.x = robot.x + 2;
+        } else if (robot.direction == 2){
+            robot.y = robot.y + 2;
+        } else if (robot.direction == 3){
+            robot.x = robot.x - 2;
         }
-    } else if (command = 1){
-        if(robot.direction = 0){
-            robot.y = robot.y - 1;
-            robot.direction = 3;
-        } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
-            robot.direction = 0;
-        } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
-            robot.direction = 1;
-        } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
-            robot.direction = 2;
+    } else if (command == 1){
+        if(robot.direction == 0){
+            robot.y = robot.y - 2;
+        } else if (robot.direction == 1){
+            robot.x = robot.x + 2;
+        } else if (robot.direction == 2){
+            robot.y = robot.y + 2;
+        } else if (robot.direction == 3){
+            robot.x = robot.x - 2;
         }
-    } else if (command = 2){
-        if(robot.direction = 0){
-            robot.y = robot.y - 1;
-        } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
-        } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
-        } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
+    } else if (command == 2){
+        if(robot.direction == 0){
+            robot.y = robot.y - 2;
+        } else if (robot.direction == 1){
+            robot.x = robot.x + 2;
+        } else if (robot.direction == 2){
+            robot.y = robot.y + 2;
+        } else if (robot.direction == 3){
+            robot.x = robot.x - 2;
         }
-    } else if (command = 3){
-        if(robot.direction = 0){
-            robot.y = robot.y - 1;
-        } else if (robot.direction = 1){
-            robot.x = robot.x + 1;
-        } else if (robot.direction = 2){
-            robot.y = robot.y + 1;
-        } else if (robot.direction = 3){
-            robot.x = robot.x - 1;
+    } else if (command == 3){
+        if(robot.direction == 0){
+            robot.y = robot.y - 2;
+        } else if (robot.direction == 1){
+            robot.x = robot.x + 2;
+        } else if (robot.direction == 2){
+            robot.y = robot.y + 2;
+        } else if (robot.direction == 3){
+            robot.x = robot.x - 2;
         }
     }
 }
@@ -563,12 +559,16 @@ void write_instruc_from_path_to(int *buffer, path_t *path) {
     // must start from a station, so we can just test for the edge that its on (assume dir is inwards)
     if (path->x == 0) {
         dir = 'E';
+        robot.direction = 1;
     } else if (path->x == GRID_SIZE-1) {
         dir = 'W';
+        robot.direction = 3;
     } else if (path->y == 0) {
         dir = 'S';
+        robot.direction = 2;
     } else {
         dir = 'N';
+        robot.direction = 0;
     }
 
     // translate to instructions
@@ -638,7 +638,7 @@ void write_instruc_from_path_to(int *buffer, path_t *path) {
         }
         cur = cur->next;
     } 
-    buffer[i++] = 3;
+    buffer[i++] = 4;
     
     free(path);
 
@@ -773,7 +773,7 @@ void send_command_to_robot(int command){
 
 // listens to response from robot and returns what happened, 0 means unknown command, 1 means robot successfully completed command,
 // 2 means it found a mine and a new path needs to be calculated.
-int listen_to_robot(int route_index){
+int listen_to_robot(int command){
     while(1){
         readByte(hSerial, character);
         if (strcmp(character, "Q") == 0){
@@ -783,20 +783,20 @@ int listen_to_robot(int route_index){
         }
         if (strcmp(character, "X") == 0) {
             printf("x has been recieved \n");
-            if(commands[route_index] == 1){
+            if(command == 1){
                 if(robot.direction == 0){
                     robot.direction = 3;
                 } else {
-                    robot.direction --;
+                    robot.direction--;
                 }
-            } else if (commands[route_index] == 2){
+            } else if (command == 2){
                 if (robot.direction == 3){
                     robot.direction = 1;
                 } else {
                 robot.direction++;
                 }
             }
-            update_robot_position(0);
+            update_robot_position(command);
             return 1;
         }
         Sleep(100);
@@ -837,9 +837,6 @@ int main(){
     initSio(hSerial);
     // //----------------------------------------------------------
 
-    // make_route();
-    visualize_maze();
-
 
     //this piece of code will send the commands to the robot
     int n = 0;
@@ -848,20 +845,23 @@ int main(){
             break;
         }
 
-        int instructions[100] = {0};
         path_t *path;
-        lee_start_2_target(0,4, 12,6);
+        struct cell starting_cell = get_station(start_station);
+        struct cell end_cell = get_station(end_station);
+        robot.x = starting_cell.x;
+        robot.y = starting_cell.y;
+        lee_start_2_target(starting_cell.x, starting_cell.y, end_cell.x, end_cell.y);
         path = generate_path_start_2_target(start_station, end_station);
-        write_instruc_from_path_to(instructions, path);
+        write_instruc_from_path_to(commands, path);
         
         int i = 0;
         int response;
         char character[32];
         while(commands[i+1] != -1){ //loop while there are actually commands
+            visualize_maze();
             send_command_to_robot(commands[i]);
-            printf("sendcommand is gerund");
-            response = listen_to_robot(i);
-            printf("an response has been recieved");
+            response = listen_to_robot(commands[i]);
+            debug("an response has been recieved");
             if(response == 0){
                 perror("Unknown command send by robot!");
             }
