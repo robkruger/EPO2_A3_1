@@ -10,7 +10,7 @@
 #include <string.h>
 #include <Windows.h>
 
-#define COMPORT "COM2"
+#define COMPORT "COM4"
 #define BAUDRATE CBR_9600
 
 
@@ -915,6 +915,15 @@ int main(){
         FILE_ATTRIBUTE_NORMAL,
         0
     );
+
+
+    // //----------------------------------------------------------
+    // // Initialize the parameters of the COM port
+    initSio(hSerial);
+    // //----------------------------------------------------------
+
+    // make_route();
+    //visualize_maze();
 
 
     //this piece of code will send the commands to the robot
