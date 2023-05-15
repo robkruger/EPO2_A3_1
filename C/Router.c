@@ -342,7 +342,7 @@ void initialize_maze_test(){
 }
 
 void visualize_maze(){
-    // gotoxy(0,1);
+    gotoxy(0,1);
     int i, j;
     for(j = 0; j < 13; j++){
         printf("-----");
@@ -433,33 +433,33 @@ void found_mine(int x, int y, int direction){ //?
 void update_robot_position(int command){
     if (command == 0){
         if(robot.direction == 0){
-            robot.y = robot.y - 1;
+            robot.y = robot.y - 2;
         } else if (robot.direction == 1){
-            robot.x = robot.x + 1;
+            robot.x = robot.x + 2;
         } else if (robot.direction == 2){
-            robot.y = robot.y + 1;
+            robot.y = robot.y + 2;
         } else if (robot.direction == 3){
-            robot.x = robot.x - 1;
+            robot.x = robot.x - 2;
         }
     } else if (command == 1){ //left
         if(robot.direction == 0){
-            robot.x = robot.x - 1;
+            robot.x = robot.x - 2;
         } else if (robot.direction == 1){
-            robot.y = robot.y - 1;
+            robot.y = robot.y - 2;
         } else if (robot.direction == 2){
-            robot.x = robot.x + 1;
+            robot.x = robot.x + 2;
         } else if (robot.direction == 3){
-            robot.y = robot.y + 1;
+            robot.y = robot.y + 2;
         }
     } else if (command == 2){ //right
         if(robot.direction == 0){
-            robot.x = robot.x + 1;
+            robot.x = robot.x + 2;
         } else if (robot.direction == 1){
-            robot.y = robot.y + 1;
+            robot.y = robot.y + 2;
         } else if (robot.direction == 2){
-            robot.x = robot.x - 1;
+            robot.x = robot.x - 2;
         } else if (robot.direction == 3){
-            robot.y = robot.y - 1;
+            robot.y = robot.y - 2;
         }
     }
 }
@@ -540,10 +540,15 @@ int *find_possible_neighbors(int i, int j){
     return n;
 }
 
-void lee_start_2_target(struct cell start, struct cell target){
+void lee_start_2_target(struct cell start, struct cell target, int reroute){
     int counter = 1;
     int *neigbours;
-    maze[start.x][start.y].v = counter;
+    if(reroute){
+        maze[robot.x][robot.y].v = counter;
+    }
+    else{
+        maze[start.x][start.y].v = counter;
+    }
 
 
     while (maze[target.x][target.y].v == 0) {
@@ -690,28 +695,27 @@ void write_commands(path_t *path, int reroute) {
     // we now have every possible transition in the matrix, 
     // but only the odd ones represent a crossing! 
     i=0;
+    memset(commands, -1, sizeof commands);
     while (buffer[i] != 4) {
         if (i%2 == 0) {
             commands[i/2] = buffer[i];
         }
         i++;
     }
-    commands[(i/2)+1] = 4;
-
-    print_commands();
+    commands[(i/2)] = 4;
 }
 
-void make_route(int start, int target) {
+void make_route(int start, int target, int reroute) {
     path_t *path;
-    printf("Initialising maze...");
+    debug("Initialising maze...");
     initialize_maze();
-    printf("performing Lee algorithm...\n");
-    lee_start_2_target(get_station(start), get_station(target));
+    debug("performing Lee algorithm...\n");
+    lee_start_2_target(get_station(start), get_station(target), reroute);
     visualize_maze();
-    printf("generating path...\n");
-    path = generate_path(get_station(start), get_station(target));
-    printf("writing commands...\n");
-    write_commands(path);
+    debug("generating path...\n");
+    path = generate_path(get_station(start), get_station(target), reroute);
+    debug("writing commands...\n");
+    write_commands(path, reroute);
 }
 
 void print_commands() {
@@ -898,19 +902,19 @@ int main(){
 
     read_input();
 
-    // char byteBuffer[BUFSIZ+1];
+    char byteBuffer[BUFSIZ+1];
 
     // //----------------------------------------------------------
     // // Open COMPORT for reading and writing
     // //----------------------------------------------------------
-    // hSerial = CreateFile(COMPORT,
-    //     GENERIC_READ | GENERIC_WRITE,
-    //     0,
-    //     0,
-    //     OPEN_EXISTING,
-    //     FILE_ATTRIBUTE_NORMAL,
-    //     0
-    // );
+    hSerial = CreateFile(COMPORT,
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        0
+    );
 
 
     //this piece of code will send the commands to the robot
@@ -920,12 +924,12 @@ int main(){
             break;
         }
 
-        struct cell starting_cell = get_station(start_station);
-        struct cell end_cell = get_station(end_station);
+        struct cell starting_cell = get_station(stations[n]);
+        struct cell end_cell = get_station(stations[n + 1]);
         robot.x = starting_cell.x;
         robot.y = starting_cell.y;
 
-        make_route(start_station, end_station);
+        make_route(stations[n], stations[n + 1], 0);
         
         int i = 0;
         int response;
@@ -943,10 +947,7 @@ int main(){
             else if(response == 2){
                 debug("Found mine");
                 memset(commands, 0, sizeof commands);
-                initialize_maze();
-                lee_start_2_target(robot.x, robot.y, end_cell.x, end_cell.y);
-                path = generate_path_start_2_target(start_station, end_station, 1);
-                write_instruc_from_path_to(commands, path, 1);
+                make_route(0, stations[n + 1], 1);
                 i = -1;
             }
             // else if(response == 2){
