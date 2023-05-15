@@ -37,6 +37,8 @@ struct cell {
     int v; 
     // Location in the maze
     int x, y; 
+
+    int visited;
     // Name, not used at the moment
     char name[8]; 
 };
@@ -131,6 +133,49 @@ void print_path(path_t *head) {
     while (cur) {
         printf("(%d, %d)\n", cur->x, cur->y);
         cur = cur->next;
+    }
+}
+
+// stack implementation for challenge C
+struct stack {
+    int max_size;
+    int top_i;
+    struct cell *cells;
+};
+
+struct stack *newstack(int capacity) {
+    struct stack *pt = (struct stack*)malloc(sizeof(struct stack));
+
+    pt->max_size = capacity;
+    pt->top_i = -1;
+    pt->cells = (struct cell*)malloc(sizeof(struct cell) * capacity);
+
+    return pt;
+}
+
+int is_empty(struct stack *pt) {
+    return pt->top_i == -1;
+}
+
+int is_full(struct stack *pt) {
+    return pt->top_i == pt->max_size-1;
+}
+
+void push(struct stack *pt, struct cell cell) {
+    if (is_full(pt)) {
+        printf("stack is full!\n");
+    } else {
+        printf("pushing cell with xy: (%d, %d)      ", cell.x, cell.y);
+        pt->cells[++(pt->top_i)] = cell;
+        printf("new top_i: %d\n", pt->top_i);
+    }
+}
+
+struct cell pop(struct stack *pt) {
+    if (is_empty(pt)) {
+        printf("stack is empty!\n");
+    } else {
+        return pt->cells[(pt->top_i)--];
     }
 }
 
@@ -896,7 +941,38 @@ int listen_to_robot(int command){
     }
 }
 
+/********* challenge C ***********************************/
+
+void depth_first_search() {
+    initialize_maze();
+    
+    // get starting station
+    int start_station_num;
+    printf("enter the starting station: ");
+    scanf("%i", &start_station_num);
+    
+    // Use a stack for the DFS alg
+    struct stack *cell_stack = newstack(100);
+    // testing the stack
+    struct cell test_cell;
+    push(cell_stack, maze[0][0]);
+    push(cell_stack, maze[1][0]);
+    push(cell_stack, maze[2][0]);
+    test_cell = pop(cell_stack);
+    printf("%d, %d\n", test_cell.x, test_cell.y);
+    test_cell = pop(cell_stack);
+    printf("%d, %d\n", test_cell.x, test_cell.y);
+
+    
+    // added a visited variable to cell structure
+
+    
+
+}
+
 int main(){
+    depth_first_search();
+    return 0;
     srand(time(NULL));
     initialize_maze();
 
