@@ -21,15 +21,9 @@ const int GRID_SIZE = 13;
 HANDLE hSerial;
 //variables
 char character[32];
-int start_station, end_station;
-
-// Stations between which a path has to be found, -1 means there is no station.
-int stations[]= {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 
 // 0 = North, 1 = East, 2 = South, 3 = West
 int direction;
-
-int commands[100];
 
 /********** Declaring Structs and methods ****************/
 struct cell {
@@ -37,8 +31,6 @@ struct cell {
     int v; 
     // Location in the maze
     int x, y; 
-    // Name, not used at the moment
-    char name[8]; 
 };
 
 // Matrix represantation of the maze
@@ -158,26 +150,6 @@ void cyan(){
 
 void reset(){
   printf("\033[0m");
-}
-
-/********* Input *****************************************/
-void change_edge(int i, int j, int direction, int v){
-    int k, l;
-    k = 2 + j * 2;
-    l = 2 + i * 2;
-    if(direction == 0){
-        l += 1;
-    }
-    else if(direction == 1){
-        k += 1;
-    }
-    else if(direction == 2){
-        l -= 1;
-    }
-    else if(direction == 3){
-        k -= 1;
-    }
-    maze[k][l].v = v;
 }
 
 /********** Maze *****************************************/
@@ -379,14 +351,6 @@ void update_robot_position(int command, int step){
     }
 }
 
-void print_commands() {
-    int i = 0;
-    while (commands[i] != 4) {
-        printf("%d, ", commands[i++]);
-    }
-    printf("%d\n", commands[i]);
-}
-
 /********* Wireless communication ************************/
 
 //--------------------------------------------------------------
@@ -547,7 +511,7 @@ int listen_to_robot(int command){
         }
         if (strcmp(character, "X") == 0) {
             printf("x has been recieved \n");
-            update_robot_position(command, 2);
+            update_robot_position(command, 1);
             if(command == 1){
                 if(robot.direction == 0){
                     robot.direction = 3;
