@@ -134,7 +134,6 @@ void print_path(path_t *head) {
     }
 }
 
-
 struct robot {
     int x, y;
     int direction;
@@ -464,7 +463,6 @@ void update_robot_position(int command){
     }
 }
 
-
 /********** Lee's algorithm: pathfinding *****************/
 
 
@@ -554,6 +552,42 @@ void lee_start_2_target(struct cell start, struct cell target, int reroute){
     while (maze[target.x][target.y].v == 0) {
         // printf("%d, %d \n", target.x, target.y);
         // increment the neigbours of all cells with value = counter:
+        for (int j=0; j<GRID_SIZE; j+2){
+            for (int i=0; i<GRID_SIZE; i+2){
+                if (maze[j][i].v == counter){
+                    neigbours = find_possible_neighbors(j, i);
+                    // for (int l=0; l<8; l++) {
+                    //     printf("%d, ", neigbours[l]);
+                    // }
+                    // printf("\n");
+                    for (int k=0; k < 4; k++){
+                        if (neigbours[k*2] >= 0){
+                            maze[neigbours[k*2]][neigbours[k*2+1]].v = counter+1;
+                        }
+                    }
+                    free(neigbours);
+                }
+            }
+        }
+        counter++;
+    }
+}
+
+/********** Challenge C, Held Karp ********************/
+
+void lee_full(struct cell start, int reroute){
+    int counter = 1;
+    int *neigbours;
+    if(reroute){
+        maze[robot.x][robot.y].v = counter;
+    } else {
+        maze[start.x][start.y].v = counter;
+    }
+    int again = 1;
+
+    // increment the neigbours of all cells with value = counter:
+    while(again){
+        again = 0;
         for (int j=0; j<GRID_SIZE; j++){
             for (int i=0; i<GRID_SIZE; i++){
                 if (maze[j][i].v == counter){
@@ -568,6 +602,9 @@ void lee_start_2_target(struct cell start, struct cell target, int reroute){
                         }
                     }
                     free(neigbours);
+                }
+                if(maze[j][i].v == 0){
+                    again = 1;
                 }
             }
         }
@@ -899,8 +936,12 @@ int listen_to_robot(int command){
 int main(){
     srand(time(NULL));
     initialize_maze();
+    lee_full(get_station(1), 0);
+    // held_karp(get_station(1), 0);
+    visualize_maze();
+    Sleep(100000);
 
-    read_input();
+    // read_input();
 
     char byteBuffer[BUFSIZ+1];
 
