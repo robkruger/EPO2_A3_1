@@ -29,6 +29,7 @@ int direction;
 struct cell {
     // Value
     int v; 
+    int lee_v;
     // Location in the maze
     int x, y; 
 };
@@ -531,6 +532,24 @@ int listen_to_robot(int command){
     }
 }
 
+int check_for_unreachable_zeroes(){ //checks each 0 cell if it is enclosed in -1 cells, rendering it unreachable,
+                                    //and changes their value to -1 so the robot does not try to navigate there.
+    int amount_of_zeroes = 0;
+    for (int i=0; i<=12; i++){
+        for (int j=0; j<=12; j++){
+            for(int d=0; d<=3; d++){
+                if (maze[i][j].lee_v == 0 && get_neighbour_lee(i,j,d)==-1){
+                    amount_of_zeroes++;
+                }
+                if(amount_of_zeroes == 4){
+                    maze[i][j].lee_v = -1;
+                    amount_of_zeroes = 0;
+                }
+            }
+        }
+    }
+}
+
 int max_array(int *neighbours, size_t size) {
     /* enforce the contract */
     assert(neighbours && size);
@@ -555,6 +574,19 @@ int get_neighbour(int x, int y, int direction){
             return maze[x][y + 1].v;
         case 3:
             return maze[x - 1][y].v;
+    }
+}
+
+int get_neighbour_lee(int x, int y, int direction){
+    switch(direction){
+        case 0:
+            return maze[x][y - 1].lee_v;
+        case 1:
+            return maze[x + 1][y].lee_v;
+        case 2:
+            return maze[x][y + 1].lee_v;
+        case 3:
+            return maze[x - 1][y].lee_v;
     }
 }
 
