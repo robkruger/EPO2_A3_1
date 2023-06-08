@@ -9,10 +9,11 @@
 #include <time.h>
 #include <string.h>
 #include <Windows.h>
-#include <pthread.h>
 
 #define COMPORT "COM2"
 #define BAUDRATE CBR_9600
+
+
 
 /********** Declaring constants and globals **************/
 const int GRID_SIZE = 11;
@@ -368,77 +369,74 @@ void initialize_maze_test(){
     maze[8][0].v = 21;
 }
 
-void* visualize_maze(void *arg){
-    while(1){
-        gotoxy(0,1);
-        int i, j;
+void visualize_maze(){
+    gotoxy(0,1);
+    int i, j;
+    for(j = 0; j < GRID_SIZE; j++){
+        printf("-----");
+    }
+    printf("-\n");
+    for(i = 0; i < GRID_SIZE; i++){
+        printf("! ");
         for(j = 0; j < GRID_SIZE; j++){
-            printf("-----");
-        }
-        printf("-\n");
-        for(i = 0; i < GRID_SIZE; i++){
-            printf("! ");
-            for(j = 0; j < GRID_SIZE; j++){
-                int nDigits = 1;
-                if(maze[j][i].v != 0){
-                    if(maze[j][i].v >= 0){
-                        if(robot.x == j && robot.y == i){
-                            blue();
-                        }
-                        else{
-                            green();
-                        }
-                        nDigits = floor(log10(abs(maze[j][i].v))) + 1;
-                    }
-                    else{
-                        if(robot.x == j && robot.y == i){
-                            blue();
-                        }
-                        else if(maze[j][i].v == -1){
-                            red();
-                        }
-                        else if(maze[j][i].v == -2){
-                            purple();
-                        }
-                        nDigits = 2;
-                    }
-                }
-                else {
+            int nDigits = 1;
+            if(maze[j][i].v != 0){
+                if(maze[j][i].v >= 0){
                     if(robot.x == j && robot.y == i){
                         blue();
                     }
                     else{
-                        yellow();
+                        green();
                     }
+                    nDigits = floor(log10(abs(maze[j][i].v))) + 1;
                 }
-                if(nDigits != 2){
-                    printf(" ");
+                else{
+                    if(robot.x == j && robot.y == i){
+                        blue();
+                    }
+                    else if(maze[j][i].v == -1){
+                        red();
+                    }
+                    else if(maze[j][i].v == -2){
+                        purple();
+                    }
+                    nDigits = 2;
                 }
+            }
+            else {
                 if(robot.x == j && robot.y == i){
-                    if(robot.direction == 0){
-                        printf("^");
-                    } else if(robot.direction == 1) {
-                        printf(">");
-                    } else if(robot.direction == 2) {
-                        printf("v");
-                    } else {
-                        printf("<");
-                    }
-                } else {
-                    printf("%d", maze[j][i].v);
+                    blue();
                 }
-                reset();
-                printf(" ! ");
+                else{
+                    yellow();
+                }
             }
-            printf("\n");
-            for(j = 0; j < GRID_SIZE; j++){
-                printf("-----");
+            if(nDigits != 2){
+                printf(" ");
             }
-            printf("-");
-            printf("\n");
+            if(robot.x == j && robot.y == i){
+                if(robot.direction == 0){
+                    printf("^");
+                } else if(robot.direction == 1) {
+                    printf(">");
+                } else if(robot.direction == 2) {
+                    printf("v");
+                } else {
+                    printf("<");
+                }
+            } else {
+                printf("%d", maze[j][i].v);
+            }
+            reset();
+            printf(" ! ");
         }
+        printf("\n");
+        for(j = 0; j < GRID_SIZE; j++){
+            printf("-----");
+        }
+        printf("-");
+        printf("\n");
     }
-    return NULL;
 }
 
 void found_mine(int x, int y, int direction){ //?
@@ -952,9 +950,6 @@ int main(){
         0
     );
 
-    pthread_t visualization_thread;
-
-    pthread_create(&visualization_thread, NULL, visualize_maze, NULL);
 
     // //----------------------------------------------------------
     // // Initialize the parameters of the COM port
@@ -999,7 +994,7 @@ int main(){
         int response;
         char character[32];
         while(commands[i+1] != -1){ //loop while there are actually commands
-            // visualize_maze();
+            visualize_maze();
             send_command_to_robot(commands[i]);
             response = listen_to_robot(commands[i]);
             if(response == 0){

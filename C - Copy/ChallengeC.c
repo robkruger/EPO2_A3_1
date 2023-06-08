@@ -19,7 +19,6 @@
 
 /********** Declaring constants and globals **************/
 const int GRID_SIZE = 13;
-const int MINES = 12;
 
 int DONE_LEE = false;
 int LEE_TO_START = false;
@@ -265,7 +264,7 @@ void lee(int to_start){
         counter++; 
     } 
     if(to_start){
-        maze[4][10].lee_target = true;
+        maze[2][10].lee_target = true;
         LEE_TO_START = true;
     }
     else{
@@ -750,8 +749,6 @@ int listen_to_robot(int command){
                 } else {
                 robot.direction++;
                 }
-            } else if (command == 3){
-                robot.direction = (robot.direction + 2) % 4;
             }
             found_mine(robot.x, robot.y, robot.direction);
             robot.direction = (robot.direction + 2) % 4; // Turn around
@@ -759,9 +756,23 @@ int listen_to_robot(int command){
         }
         if (strcmp(character, "X") == 0) {
             writeByte(hSerial, "Z");
+            // update_robot_position(command, 2);
+            // if(command == 1){
+            //     if(robot.direction == 0){
+            //         robot.direction = 3;
+            //     } else {
+            //         robot.direction--;
+            //     }
+            // } else if (command == 2){
+            //     if (robot.direction == 3){
+            //         robot.direction = 0;
+            //     } else {
+            //     robot.direction++;
+            //     }
+            // }
             return 1;
         }
-        Sleep(1);
+        Sleep(100);
     }
 }
 
@@ -929,7 +940,7 @@ int main(){
 
     initSio(hSerial);
 
-    while(1){
+    while(found_mines != 12){
         // int new_direction = best_direction_simple(robot.x, robot.y, robot.direction);
         int command = 0;
         int new_direction;
@@ -943,25 +954,20 @@ int main(){
                     }
                 }
             }
-            if(i > 24 && !DONE_LEE && !LEE_TO_START){
-                if(robot.found >= MINES){
-                    lee(true);
-                    new_direction = follow_lee();
-                }
-                else{
-                    new_direction = best_direction(robot.x, robot.y, robot.direction);
-                }
+            if(i > 24){
+                new_direction = best_direction(robot.x, robot.y, robot.direction);
             }
             else if(DONE_LEE || LEE_TO_START){
                 new_direction = follow_lee();
             }
             else{
-                if(robot.found < MINES){
+                if(robot.found < 6){
                     lee(false);
                 }
                 else{
                     lee(true);
                 }
+                // visualize_lee_maze();
                 new_direction = follow_lee();
             }
             int response;
@@ -1031,24 +1037,34 @@ int main(){
                     }
                     break;
             }
+            // send_command_to_robot(command);
+            // response = listen_to_robot(command);
+            // if(response == 0){
+            //     perror("Unknown command send by robot!");
+            // }
+            // else if(response == 1){
+            //     debug("Sensors all black");
+            // }
+            // else if(response == 2){
+            //     debug("Found mine");
+            // }
         }
         if(maze[robot.x][robot.y].lee_target){
-            if(robot.x == 4 && robot.y == 10 && robot.found >= MINES){
+            if(robot.x == 2 && robot.y == 10 && robot.found >= 6){
                 writeByte(hSerial, "E");
                 return 0;
             }
-            printf("At target");
+            debug("At target");
             DONE_LEE = false;
             maze[robot.x][robot.y].lee_target = false;
         }
-        // if(maze[robot.x][robot.y].mine){
-        //     maze[robot.x][robot.y].lee_v = -1;
-        //     maze[robot.x][robot.y].v = -99;
-        //     maze[robot.x][robot.y].found = true;
-        //     robot.found++;
-        //     command = 3;
-        //     DONE_LEE = false;
-        // }
+        if(maze[robot.x][robot.y].mine){
+            maze[robot.x][robot.y].lee_v = -1;
+            maze[robot.x][robot.y].v = -99;
+            maze[robot.x][robot.y].found = true;
+            robot.found++;
+            command = 3;
+        }
         maze[robot.x][robot.y].v--;
         switch(new_direction){
             case 0:
@@ -1092,9 +1108,6 @@ int main(){
             // visualize_fast();
             visualize_maze();
         }
-        char str[20];    
-        sprintf(str, "%d", robot.found);
-        debug(str);
     }
 
     writeByte(hSerial, "E"); //at last, send stop byte to robot to get it to stop.
