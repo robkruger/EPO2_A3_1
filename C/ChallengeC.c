@@ -12,7 +12,7 @@
 #include <assert.h>
 #include <pthread.h>
 
-#define COMPORT "COM2"
+#define COMPORT "COM1"
 #define BAUDRATE CBR_9600
 #define true 1
 #define false 0
@@ -129,13 +129,11 @@ void gotoxy(int column, int line){
 }
 
 void debug(char *message){
-    gotoxy(0, 28);
+    gotoxy(0, 30);
     printf("\33[2K\r");
-    gotoxy(0, 28);
+    gotoxy(0, 30);
     printf(message);
-    Sleep(5);
 }
-
 
 /********** Coloured output text functions ***************/
 void red(){
@@ -218,6 +216,8 @@ void initialize_maze(){
             int x = mines[i].x;
             int y = mines[i].y;
             maze[x][y].mine = true;
+            maze[x][y].v = -99;
+            maze[x][y].lee_v = -1;
         }
     }
 }
@@ -236,7 +236,7 @@ void lee(int to_start){
     int k = 1000;
     while(k > 0){
         if(counter > 50){
-            perror("Got stuck in Lee!");
+            break;
         }
         int i, j;
         for(i = 0; i < GRID_SIZE; i++){
@@ -609,8 +609,7 @@ void initSio(HANDLE hSerial){
     dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
 
     if (!GetCommState(hSerial, &dcbSerialParams)) {
-        //error getting state
-        printf("error getting state \n");
+        perror("Error getting state \n");
     }
 
     dcbSerialParams.BaudRate = BAUDRATE;
@@ -620,7 +619,7 @@ void initSio(HANDLE hSerial){
 
     if(!SetCommState(hSerial, &dcbSerialParams)){
         //error setting serial port state
-        printf("error setting state \n");
+        perror("error setting state \n");
     }
 
     timeouts.ReadIntervalTimeout = 50;
@@ -632,7 +631,7 @@ void initSio(HANDLE hSerial){
 
     if(!SetCommTimeouts(hSerial, &timeouts)){
     //error occureed. Inform user
-        printf("error setting timeout state \n");
+        perror("error setting timeout state \n");
     }
 }
 
@@ -647,7 +646,7 @@ int readByte(HANDLE hSerial, char *buffRead) {
 
     if (!ReadFile(hSerial, buffRead, 1, &dwBytesRead, NULL))
     {
-        printf("error reading byte from input buffer \n");
+        perror("error reading byte from input buffer \n");
     }
     //printf("Byte read from read buffer is: %c \n", buffRead[0]);
     return(buffRead[0]);
@@ -664,9 +663,8 @@ int writeByte(HANDLE hSerial, char *buffWrite){
 
     if (!WriteFile(hSerial, buffWrite, 1, &dwBytesWritten, NULL))
     {
-        printf("error writing byte to output buffer \n");
+        perror("error writing byte to output buffer \n");
     }
-    printf("Byte written to write buffer is: %c \n", buffWrite[0]);
 
     return(0);
 }
@@ -741,11 +739,13 @@ int listen_to_robot(int command, int part){
                     return 3;
                 }
                 else{
-                    writeByte(hSerial, "M");
+                    writeByte(hSerial, "F");
+                    Sleep(4000);
                 }
             }
-            else{
+            else {
                 writeByte(hSerial, "Z");
+                Sleep(350);
             }
             if(command == 1){
                 if(robot.direction == 0){
@@ -768,6 +768,7 @@ int listen_to_robot(int command, int part){
         }
         if (strcmp(character, "X") == 0) {
             writeByte(hSerial, "Z");
+            Sleep(350);
             return 1;
         }
         Sleep(1);
@@ -911,6 +912,167 @@ int best_direction(int x, int y, int direction){
     }
 }
 
+int part_2(){
+    writeByte(hSerial, "E");
+    int testint = 0;
+    scanf("%d", &testint);
+    robot.x = 4;
+    robot.y = 10;
+    robot.direction = 0;
+    robot.found = 0;
+    initialize_maze();
+
+    while(1){
+        int command;
+        int new_direction;
+        if(robot.x % 2 == 0 && robot.y % 2 == 0){
+            int i = 0;
+            int x, y;
+            for(x = 0; x < GRID_SIZE; x++){
+                for(y = 0; y < GRID_SIZE; y++){
+                    if(maze[x][y].v == 0){
+                        i++;
+                    }
+                }
+            }
+            if(i > 24 && !DONE_LEE && !LEE_TO_START){
+                new_direction = best_direction(robot.x, robot.y, robot.direction);
+            }
+            else if(DONE_LEE || LEE_TO_START){
+                new_direction = follow_lee();
+            }
+            else{
+                VISUALIZE_LEE = true;
+                if(robot.found < MINES){
+                    lee(false);
+                }
+                else{
+                    lee(true);
+                }
+                new_direction = follow_lee();
+            }
+            int response;
+            switch(robot.direction){
+                case 0:
+                    switch(new_direction){
+                        case 0:
+                            command = 0;
+                            break;
+                        case 1:
+                            command = 2;
+                            break;
+                        case 2:
+                            command = 3;
+                            break;
+                        case 3:
+                            command = 1;
+                            break;
+                    }
+                    break;
+                case 1:
+                    switch(new_direction){
+                        case 0:
+                            command = 1;
+                            break;
+                        case 1:
+                            command = 0;
+                            break;
+                        case 2:
+                            command = 2;
+                            break;
+                        case 3:
+                            command = 3;
+                            break;
+                    }
+                    break;
+                case 2:
+                    switch(new_direction){
+                        case 0:
+                            command = 3;
+                            break;
+                        case 1:
+                            command = 1;
+                            break;
+                        case 2:
+                            command = 0;
+                            break;
+                        case 3:
+                            command = 2;
+                            break;
+                    }
+                    break;
+                case 3:
+                    switch(new_direction){
+                        case 0:
+                            command = 2;
+                            break;
+                        case 1:
+                            command = 3;
+                            break;
+                        case 2:
+                            command = 1;
+                            break;
+                        case 3:
+                            command = 0;
+                            break;
+                    }
+                    break;
+            }
+        }
+        if(maze[robot.x][robot.y].lee_target){
+            DONE_LEE = false;
+            maze[robot.x][robot.y].lee_target = false;
+        }
+        // if(maze[robot.x][robot.y].mine){
+        //     maze[robot.x][robot.y].lee_v = -1;
+        //     maze[robot.x][robot.y].v = -99;
+        //     maze[robot.x][robot.y].found = true;
+        //     robot.found++;
+        //     command = 3;
+        //     DONE_LEE = false;
+        // }
+        send_command_to_robot(command);
+        int response = listen_to_robot(command, 2);
+        maze[robot.x][robot.y].v--;
+        switch(new_direction){
+            case 0:
+                if(maze[robot.x][robot.y - 1].lee_target){
+                    DONE_LEE = false;
+                    maze[robot.x][robot.y - 1].lee_target = false;
+                }
+                maze[robot.x][robot.y - 1].v--;
+                break;
+            case 1:
+                if(maze[robot.x + 1][robot.y].lee_target){
+                    DONE_LEE = false;
+                    maze[robot.x + 1][robot.y].lee_target = false;
+                }
+                maze[robot.x + 1][robot.y].v--;
+                break;
+            case 2:
+                if(maze[robot.x][robot.y + 1].lee_target){
+                    DONE_LEE = false;
+                    maze[robot.x][robot.y + 1].lee_target = false;
+                }
+                maze[robot.x][robot.y + 1].v--;
+                break;
+            case 3:
+                if(maze[robot.x - 1][robot.y].lee_target){
+                    DONE_LEE = false;
+                    maze[robot.x - 1][robot.y].lee_target = false;
+                }
+                maze[robot.x - 1][robot.y].v--;
+                break;
+        }
+        if(response != 2){
+            update_robot_position(command, 2);
+        }
+        if(response == 3){
+            return 0;
+        }
+    }
+}
+
 int main(){
     srand(time(NULL));
     int k;
@@ -939,9 +1101,10 @@ int main(){
         0
     );
 
-    initSio(hSerial);
+    // initSio(hSerial);
 
     while(1){
+        Sleep(2000);
         // int new_direction = best_direction_simple(robot.x, robot.y, robot.direction);
         int command = 0;
         int new_direction;
@@ -957,6 +1120,8 @@ int main(){
             }
             if(i > 24 && !DONE_LEE && !LEE_TO_START){
                 if(robot.found >= MINES){
+                    part_2();
+                    return 0;
                     lee(true);
                     new_direction = follow_lee();
                 }
@@ -973,6 +1138,8 @@ int main(){
                     lee(false);
                 }
                 else{
+                    part_2();
+                    return 0;
                     lee(true);
                 }
                 new_direction = follow_lee();
@@ -1052,19 +1219,22 @@ int main(){
                 }
                 else if(robot.direction == 3){
                     writeByte(hSerial, "B");
+                    Sleep(600);
                 }
                 else if(robot.direction == 1){
                     writeByte(hSerial, "C");
+                    Sleep(600);
                 }
-                Sleep(300);
-                writeByte(hSerial, "E");
+                Sleep(2500);
+                // writeByte(hSerial, "E");
                 part_2();
                 return 0;
             }
-            printf("At target");
             DONE_LEE = false;
             maze[robot.x][robot.y].lee_target = false;
         }
+        // send_command_to_robot(command);
+        int response = 1; //listen_to_robot(command, 1);
         maze[robot.x][robot.y].v--;
         switch(new_direction){
             case 0:
@@ -1096,172 +1266,9 @@ int main(){
                 maze[robot.x - 1][robot.y].v--;
                 break;
         }
-        send_command_to_robot(command);
-        int response = listen_to_robot(command, 1);
         if(response != 2){
             update_robot_position(command, 2);
         }
     }
     return 0;
-}
-
-void part_2(){
-    initialize_maze();
-
-    while(1){
-        int command;
-        int new_direction;
-        if(robot.x % 2 == 0 && robot.y % 2 == 0){
-            int i = 0;
-            int x, y;
-            for(x = 0; x < GRID_SIZE; x++){
-                for(y = 0; y < GRID_SIZE; y++){
-                    if(maze[x][y].v == 0){
-                        i++;
-                    }
-                }
-            }
-            if(i > 24 && !DONE_LEE && !LEE_TO_START){
-                if(robot.found >= MINES){
-                    lee(true);
-                    new_direction = follow_lee();
-                }
-                else{
-                    new_direction = best_direction(robot.x, robot.y, robot.direction);
-                }
-            }
-            else if(DONE_LEE || LEE_TO_START){
-                new_direction = follow_lee();
-            }
-            else{
-                VISUALIZE_LEE = true;
-                if(robot.found < MINES){
-                    lee(false);
-                }
-                else{
-                    lee(true);
-                }
-                new_direction = follow_lee();
-            }
-            int response;
-            switch(robot.direction){
-                case 0:
-                    switch(new_direction){
-                        case 0:
-                            command = 0;
-                            break;
-                        case 1:
-                            command = 2;
-                            break;
-                        case 2:
-                            command = 3;
-                            break;
-                        case 3:
-                            command = 1;
-                            break;
-                    }
-                    break;
-                case 1:
-                    switch(new_direction){
-                        case 0:
-                            command = 1;
-                            break;
-                        case 1:
-                            command = 0;
-                            break;
-                        case 2:
-                            command = 2;
-                            break;
-                        case 3:
-                            command = 3;
-                            break;
-                    }
-                    break;
-                case 2:
-                    switch(new_direction){
-                        case 0:
-                            command = 3;
-                            break;
-                        case 1:
-                            command = 1;
-                            break;
-                        case 2:
-                            command = 0;
-                            break;
-                        case 3:
-                            command = 2;
-                            break;
-                    }
-                    break;
-                case 3:
-                    switch(new_direction){
-                        case 0:
-                            command = 2;
-                            break;
-                        case 1:
-                            command = 3;
-                            break;
-                        case 2:
-                            command = 1;
-                            break;
-                        case 3:
-                            command = 0;
-                            break;
-                    }
-                    break;
-            }
-        }
-        if(maze[robot.x][robot.y].lee_target){
-            printf("At target");
-            DONE_LEE = false;
-            maze[robot.x][robot.y].lee_target = false;
-        }
-        // if(maze[robot.x][robot.y].mine){
-        //     maze[robot.x][robot.y].lee_v = -1;
-        //     maze[robot.x][robot.y].v = -99;
-        //     maze[robot.x][robot.y].found = true;
-        //     robot.found++;
-        //     command = 3;
-        //     DONE_LEE = false;
-        // }
-        maze[robot.x][robot.y].v--;
-        switch(new_direction){
-            case 0:
-                if(maze[robot.x][robot.y - 1].lee_target){
-                    DONE_LEE = false;
-                    maze[robot.x][robot.y - 1].lee_target = false;
-                }
-                maze[robot.x][robot.y - 1].v--;
-                break;
-            case 1:
-                if(maze[robot.x + 1][robot.y].lee_target){
-                    DONE_LEE = false;
-                    maze[robot.x + 1][robot.y].lee_target = false;
-                }
-                maze[robot.x + 1][robot.y].v--;
-                break;
-            case 2:
-                if(maze[robot.x][robot.y + 1].lee_target){
-                    DONE_LEE = false;
-                    maze[robot.x][robot.y + 1].lee_target = false;
-                }
-                maze[robot.x][robot.y + 1].v--;
-                break;
-            case 3:
-                if(maze[robot.x - 1][robot.y].lee_target){
-                    DONE_LEE = false;
-                    maze[robot.x - 1][robot.y].lee_target = false;
-                }
-                maze[robot.x - 1][robot.y].v--;
-                break;
-        }
-        send_command_to_robot(command);
-        int response = listen_to_robot(command, 2);
-        if(response != 2){
-            update_robot_position(command, 2);
-        }
-        if(response == 3){
-            return 0;
-        }
-    }
 }

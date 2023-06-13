@@ -11,7 +11,7 @@
 #include <Windows.h>
 #include <pthread.h>
 
-#define COMPORT "COM2"
+#define COMPORT "COM1"
 #define BAUDRATE CBR_9600
 
 /********** Declaring constants and globals **************/
@@ -370,7 +370,7 @@ void initialize_maze_test(){
 
 void* visualize_maze(void *arg){
     while(1){
-        gotoxy(0,1);
+        gotoxy(0,0);
         int i, j;
         for(j = 0; j < GRID_SIZE; j++){
             printf("-----");
@@ -736,13 +736,9 @@ void write_commands(path_t *path, int reroute) {
 
 void make_route(int start, int target, int reroute) {
     path_t *path;
-    debug("Initializing maze...\n");
     initialize_maze();
-    debug("performing Lee algorithm...\n");
     lee_start_2_target(get_station(start), get_station(target), reroute);
-    debug("generating path...\n");
     path = generate_path(get_station(start), get_station(target), reroute);
-    debug("writing commands...\n");
     write_commands(path, reroute);
 }
 
@@ -810,7 +806,7 @@ int readByte(HANDLE hSerial, char *buffRead) {
     {
         printf("error reading byte from input buffer \n");
     }
-    //printf("Byte read from read buffer is: %c \n", buffRead[0]);
+    // printf("Byte read from read buffer is: %c \n", buffRead[0]);
     return(buffRead[0]);
 }
 
@@ -827,9 +823,9 @@ int writeByte(HANDLE hSerial, char *buffWrite){
     {
         debug("error writing byte to output buffer \n");
     }
-    if(buffWrite[0] != "Z"){
-        printf("Byte written to write buffer is: %c \n", buffWrite[0]);
-    }
+    // if(buffWrite[0] != "Z"){
+    //     printf("Byte written to write buffer is: %c \n", buffWrite[0]);
+    // }
 
     return(0);
 }
@@ -841,39 +837,33 @@ void send_command_to_robot(int command){
     if(command == 0){ 
         //go forward
         writeByte(hSerial, "A");
-        end = clock();
-        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-        printf("%f", cpu_time_used);
         while(1){
             readByte(hSerial, character);
             Sleep(100);
             if (strcmp(character, "R") == 0){
+                // writeByte(hSerial, "Z");
                 break;
             }       
         }
     } 
     else if (command == 1){ // go left
         writeByte(hSerial, "B");
-        end = clock();
-        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-        printf("%f", cpu_time_used);
         while(1){
             readByte(hSerial, character);
             Sleep(100);
             if (strcmp(character, "S") == 0){
+                // writeByte(hSerial, "Z");
                 break;
             }
         }
     } 
     else if (command == 2){ // go right
         writeByte(hSerial, "C");
-        end = clock();
-        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-        printf("%f", cpu_time_used);
         while(1){
             readByte(hSerial, character);
             Sleep(100);
             if (strcmp(character, "T") == 0){
+                // writeByte(hSerial, "Z");
                 break;
             }
         }
@@ -884,6 +874,7 @@ void send_command_to_robot(int command){
             readByte(hSerial, character);
             Sleep(100);
             if (strcmp(character, "V") == 0){
+                // writeByte(hSerial, "Z");
                 break;
             }
         }
@@ -896,7 +887,7 @@ int listen_to_robot(int command){
     while(1){
         readByte(hSerial, character);
         if (strcmp(character, "Q") == 0){
-            writeByte(hSerial, "Z");
+            // writeByte(hSerial, "Q");
             if(command == 1){
                 if(robot.direction == 0){
                     robot.direction = 3;
@@ -914,7 +905,7 @@ int listen_to_robot(int command){
         }
         if (strcmp(character, "X") == 0) {
             writeByte(hSerial, "Z");
-            printf("x has been recieved \n");
+            Sleep(300);
             update_robot_position(command);
             if(command == 1){
                 if(robot.direction == 0){
@@ -952,6 +943,9 @@ int main(){
         0
     );
 
+    initialize_maze();
+    read_input();
+
     pthread_t visualization_thread;
 
     pthread_create(&visualization_thread, NULL, visualize_maze, NULL);
@@ -963,8 +957,6 @@ int main(){
 
     // make_route();
     //visualize_maze();
-    initialize_maze();
-    read_input();
 
     //this piece of code will send the commands to the robot
     int n = 0;
@@ -1005,12 +997,7 @@ int main(){
             if(response == 0){
                 perror("Unknown command send by robot!");
             }
-            else if(response == 1){
-                debug("Sensors all black");
-            }
             else if(response == 2){
-                start = clock();
-                debug("Found mine");
                 memset(commands, -1, sizeof commands);
                 initialize_maze();
                 make_route(0, stations[n + 1], 1);
