@@ -217,40 +217,6 @@ void read_input(){
     int numofblock, i, j, k, ci, cj, dir_n;
     char dir_l;
     j = 0;
-    //scans for number of blockades
-    scanf("%i", &numofblock);
-    for(i=0; i<numofblock; i++){ //loops scan for blockade info, runs for amount of inputs
-        scanf("%i %i %c", &ci,&cj,&dir_l);
-        //make dir_n the number corresponding to direction
-        if (dir_l == 's'){
-            dir_n = 0;
-        }
-        else if (dir_l == 'w'){
-            dir_n = 3;
-        }
-        else if (dir_l == 'n'){
-            dir_n = 2;
-        }
-        else {
-            dir_n = 1;
-        }
-        //function to get the respective edges and change them
-        blocked_edges[i].y = 1 + ci * 2;
-        blocked_edges[i].x = 1 + cj * 2;
-        if(dir_n == 0){
-            blocked_edges[i].y += 1;
-        }
-        else if(dir_n == 1){
-            blocked_edges[i].x += 1;
-        }
-        else if(dir_n == 2){
-            blocked_edges[i].y -= 1;
-        }
-        else if(dir_n == 3){
-            blocked_edges[i].x -= 1;
-        }
-        number_of_blocked_edges++;
-    }
     //scan for input stations, stop when newline  is detected
     char discard;
     while(j<11 && scanf("%d%1[^\n]s", &stations[j], &discard) == 2){
