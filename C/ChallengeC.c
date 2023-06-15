@@ -745,7 +745,7 @@ int listen_to_robot(int command, int part){
             }
             else {
                 writeByte(hSerial, "Z");
-                Sleep(350);
+                // Sleep(100);
             }
             if(command == 1){
                 if(robot.direction == 0){
@@ -1101,10 +1101,9 @@ int main(){
         0
     );
 
-    // initSio(hSerial);
+    initSio(hSerial);
 
     while(1){
-        Sleep(2000);
         // int new_direction = best_direction_simple(robot.x, robot.y, robot.direction);
         int command = 0;
         int new_direction;
@@ -1233,8 +1232,8 @@ int main(){
             DONE_LEE = false;
             maze[robot.x][robot.y].lee_target = false;
         }
-        // send_command_to_robot(command);
-        int response = 1; //listen_to_robot(command, 1);
+        send_command_to_robot(command);
+        int response = listen_to_robot(command, 1);
         maze[robot.x][robot.y].v--;
         switch(new_direction){
             case 0:
