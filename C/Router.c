@@ -9,12 +9,10 @@
 #include <time.h>
 #include <string.h>
 #include <Windows.h>
+#include <pthread.h>
 
-#define COMPORT "COM2"
 #define COMPORT "COM3"
 #define BAUDRATE CBR_9600
-
-
 
 /********** Declaring constants and globals **************/
 const int GRID_SIZE = 11;
@@ -141,7 +139,6 @@ void print_path(path_t *head) {
     }
 }
 
-
 struct robot {
     int x, y;
     int direction;
@@ -220,40 +217,6 @@ void read_input(){
     int numofblock, i, j, k, ci, cj, dir_n;
     char dir_l;
     j = 0;
-    //scans for number of blockades
-    scanf("%i", &numofblock);
-    for(i=0; i<numofblock; i++){ //loops scan for blockade info, runs for amount of inputs
-        scanf("%i %i %c", &ci,&cj,&dir_l);
-        //make dir_n the number corresponding to direction
-        if (dir_l == 's'){
-            dir_n = 0;
-        }
-        else if (dir_l == 'w'){
-            dir_n = 3;
-        }
-        else if (dir_l == 'n'){
-            dir_n = 2;
-        }
-        else {
-            dir_n = 1;
-        }
-        //function to get the respective edges and change them
-        blocked_edges[i].y = 1 + ci * 2;
-        blocked_edges[i].x = 1 + cj * 2;
-        if(dir_n == 0){
-            blocked_edges[i].y += 1;
-        }
-        else if(dir_n == 1){
-            blocked_edges[i].x += 1;
-        }
-        else if(dir_n == 2){
-            blocked_edges[i].y -= 1;
-        }
-        else if(dir_n == 3){
-            blocked_edges[i].x -= 1;
-        }
-        number_of_blocked_edges++;
-    }
     //scan for input stations, stop when newline  is detected
     char discard;
     while(j<11 && scanf("%d%1[^\n]s", &stations[j], &discard) == 2){
@@ -371,74 +334,77 @@ void initialize_maze_test(){
     maze[8][0].v = 21;
 }
 
-void visualize_maze(){
-    gotoxy(0,1);
-    int i, j;
-    for(j = 0; j < GRID_SIZE; j++){
-        printf("-----");
-    }
-    printf("-\n");
-    for(i = 0; i < GRID_SIZE; i++){
-        printf("! ");
+void* visualize_maze(void *arg){
+    while(1){
+        gotoxy(0,0);
+        int i, j;
         for(j = 0; j < GRID_SIZE; j++){
-            int nDigits = 1;
-            if(maze[j][i].v != 0){
-                if(maze[j][i].v >= 0){
+            printf("-----");
+        }
+        printf("-\n");
+        for(i = 0; i < GRID_SIZE; i++){
+            printf("! ");
+            for(j = 0; j < GRID_SIZE; j++){
+                int nDigits = 1;
+                if(maze[j][i].v != 0){
+                    if(maze[j][i].v >= 0){
+                        if(robot.x == j && robot.y == i){
+                            blue();
+                        }
+                        else{
+                            green();
+                        }
+                        nDigits = floor(log10(abs(maze[j][i].v))) + 1;
+                    }
+                    else{
+                        if(robot.x == j && robot.y == i){
+                            blue();
+                        }
+                        else if(maze[j][i].v == -1){
+                            red();
+                        }
+                        else if(maze[j][i].v == -2){
+                            purple();
+                        }
+                        nDigits = 2;
+                    }
+                }
+                else {
                     if(robot.x == j && robot.y == i){
                         blue();
                     }
                     else{
-                        green();
+                        yellow();
                     }
-                    nDigits = floor(log10(abs(maze[j][i].v))) + 1;
                 }
-                else{
-                    if(robot.x == j && robot.y == i){
-                        blue();
-                    }
-                    else if(maze[j][i].v == -1){
-                        red();
-                    }
-                    else if(maze[j][i].v == -2){
-                        purple();
-                    }
-                    nDigits = 2;
+                if(nDigits != 2){
+                    printf(" ");
                 }
-            }
-            else {
                 if(robot.x == j && robot.y == i){
-                    blue();
-                }
-                else{
-                    yellow();
-                }
-            }
-            if(nDigits != 2){
-                printf(" ");
-            }
-            if(robot.x == j && robot.y == i){
-                if(robot.direction == 0){
-                    printf("^");
-                } else if(robot.direction == 1) {
-                    printf(">");
-                } else if(robot.direction == 2) {
-                    printf("v");
+                    if(robot.direction == 0){
+                        printf("^");
+                    } else if(robot.direction == 1) {
+                        printf(">");
+                    } else if(robot.direction == 2) {
+                        printf("v");
+                    } else {
+                        printf("<");
+                    }
                 } else {
-                    printf("<");
+                    printf("%d", maze[j][i].v);
                 }
-            } else {
-                printf("%d", maze[j][i].v);
+                reset();
+                printf(" ! ");
             }
-            reset();
-            printf(" ! ");
+            printf("\n");
+            for(j = 0; j < GRID_SIZE; j++){
+                printf("-----");
+            }
+            printf("-");
+            printf("\n");
         }
-        printf("\n");
-        for(j = 0; j < GRID_SIZE; j++){
-            printf("-----");
-        }
-        printf("-");
-        printf("\n");
     }
+    return NULL;
 }
 
 void found_mine(int x, int y, int direction){ //?
@@ -493,7 +459,6 @@ void update_robot_position(int command){
         }
     }
 }
-
 
 /********** Lee's algorithm: pathfinding *****************/
 
@@ -737,13 +702,9 @@ void write_commands(path_t *path, int reroute) {
 
 void make_route(int start, int target, int reroute) {
     path_t *path;
-    debug("Initializing maze...\n");
     initialize_maze();
-    debug("performing Lee algorithm...\n");
     lee_start_2_target(get_station(start), get_station(target), reroute);
-    debug("generating path...\n");
     path = generate_path(get_station(start), get_station(target), reroute);
-    debug("writing commands...\n");
     write_commands(path, reroute);
 }
 
@@ -811,7 +772,7 @@ int readByte(HANDLE hSerial, char *buffRead) {
     {
         printf("error reading byte from input buffer \n");
     }
-    //printf("Byte read from read buffer is: %c \n", buffRead[0]);
+    // printf("Byte read from read buffer is: %c \n", buffRead[0]);
     return(buffRead[0]);
 }
 
@@ -828,9 +789,9 @@ int writeByte(HANDLE hSerial, char *buffWrite){
     {
         debug("error writing byte to output buffer \n");
     }
-    if(buffWrite[0] != "Z"){
-        printf("Byte written to write buffer is: %c \n", buffWrite[0]);
-    }
+    // if(buffWrite[0] != "Z"){
+    //     printf("Byte written to write buffer is: %c \n", buffWrite[0]);
+    // }
 
     return(0);
 }
@@ -842,39 +803,33 @@ void send_command_to_robot(int command){
     if(command == 0){ 
         //go forward
         writeByte(hSerial, "A");
-        end = clock();
-        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-        printf("%f", cpu_time_used);
         while(1){
             readByte(hSerial, character);
             Sleep(100);
             if (strcmp(character, "R") == 0){
+                // writeByte(hSerial, "Z");
                 break;
             }       
         }
     } 
     else if (command == 1){ // go left
         writeByte(hSerial, "B");
-        end = clock();
-        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-        printf("%f", cpu_time_used);
         while(1){
             readByte(hSerial, character);
             Sleep(100);
             if (strcmp(character, "S") == 0){
+                // writeByte(hSerial, "Z");
                 break;
             }
         }
     } 
     else if (command == 2){ // go right
         writeByte(hSerial, "C");
-        end = clock();
-        cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-        printf("%f", cpu_time_used);
         while(1){
             readByte(hSerial, character);
             Sleep(100);
             if (strcmp(character, "T") == 0){
+                // writeByte(hSerial, "Z");
                 break;
             }
         }
@@ -885,6 +840,7 @@ void send_command_to_robot(int command){
             readByte(hSerial, character);
             Sleep(100);
             if (strcmp(character, "V") == 0){
+                // writeByte(hSerial, "Z");
                 break;
             }
         }
@@ -915,7 +871,7 @@ int listen_to_robot(int command){
         }
         if (strcmp(character, "X") == 0) {
             writeByte(hSerial, "Z");
-            printf("x has been recieved \n");
+            Sleep(300);
             update_robot_position(command);
             if(command == 1){
                 if(robot.direction == 0){
@@ -953,6 +909,12 @@ int main(){
         0
     );
 
+    initialize_maze();
+    read_input();
+
+    pthread_t visualization_thread;
+
+    pthread_create(&visualization_thread, NULL, visualize_maze, NULL);
 
     // //----------------------------------------------------------
     // // Initialize the parameters of the COM port
@@ -961,8 +923,6 @@ int main(){
 
     // make_route();
     //visualize_maze();
-    initialize_maze();
-    read_input();
 
     //this piece of code will send the commands to the robot
     int n = 0;
@@ -997,18 +957,13 @@ int main(){
         int response;
         char character[32];
         while(commands[i+1] != -1){ //loop while there are actually commands
-            visualize_maze();
+            // visualize_maze();
             send_command_to_robot(commands[i]);
             response = listen_to_robot(commands[i]);
             if(response == 0){
                 perror("Unknown command send by robot!");
             }
-            else if(response == 1){
-                debug("Sensors all black");
-            }
             else if(response == 2){
-                start = clock();
-                debug("Found mine");
                 memset(commands, -1, sizeof commands);
                 initialize_maze();
                 make_route(0, stations[n + 1], 1);

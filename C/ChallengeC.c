@@ -10,8 +10,9 @@
 #include <string.h>
 #include <Windows.h>
 #include <assert.h>
+#include <pthread.h>
 
-#define COMPORT "COM2"
+#define COMPORT "COM1"
 #define BAUDRATE CBR_9600
 #define true 1
 #define false 0
@@ -19,9 +20,12 @@
 
 /********** Declaring constants and globals **************/
 const int GRID_SIZE = 13;
+const int MINES = 12;
 
 int DONE_LEE = false;
 int LEE_TO_START = false;
+int VISUALIZE_LEE = false;
+int TREASURES = 0;
 
 HANDLE hSerial;
 //variables
@@ -36,7 +40,6 @@ struct cell {
     int v; 
     int lee_v;
     int lee_target;
-    int lee_v;
     // Location in the maze
     int x, y; 
     int mine;
@@ -126,13 +129,11 @@ void gotoxy(int column, int line){
 }
 
 void debug(char *message){
-    gotoxy(0, 28);
+    gotoxy(0, 30);
     printf("\33[2K\r");
-    gotoxy(0, 28);
+    gotoxy(0, 30);
     printf(message);
-    Sleep(5);
 }
-
 
 /********** Coloured output text functions ***************/
 void red(){
@@ -215,6 +216,8 @@ void initialize_maze(){
             int x = mines[i].x;
             int y = mines[i].y;
             maze[x][y].mine = true;
+            maze[x][y].v = -99;
+            maze[x][y].lee_v = -1;
         }
     }
 }
@@ -233,7 +236,7 @@ void lee(int to_start){
     int k = 1000;
     while(k > 0){
         if(counter > 50){
-            perror("Got stuck in Lee!");
+            break;
         }
         int i, j;
         for(i = 0; i < GRID_SIZE; i++){
@@ -265,7 +268,7 @@ void lee(int to_start){
         counter++; 
     } 
     if(to_start){
-        maze[2][10].lee_target = true;
+        maze[4][10].lee_target = true;
         LEE_TO_START = true;
     }
     else{
@@ -336,185 +339,179 @@ int follow_lee(){
     return last_direction;
 }
 
-void visualize_maze(){
-    gotoxy(0,1);
-    int i, j;
-    printf("------------------------------------------------------------------------------\n");
-    for(i = 0; i < 13; i++){
-        printf("! ");
-        for(j = 0; j < 13; j++){
-            int nDigits = 1;
-            if(maze[j][i].v != 0){
-                if(maze[j][i].v >= 0){
-                    if(robot.x == j && robot.y == i){
-                        blue();
-                    }
-                    else if(maze[j][i].mine && !maze[j][i].found){
-                        cyan();
-                    }
-                    else if(maze[j][i].mine && maze[j][i].found){
-                        green();
-                    }
-                    else{
-                        green();
-                    }
-                    nDigits = floor(log10(abs(maze[j][i].v))) + 1;
-                }
-                else{
-                    if(robot.x == j && robot.y == i){
-                        blue();
-                    }
-                    else if(maze[j][i].v == -99){
-                        red();
-                    }
-                    else if(maze[j][i].mine && !maze[j][i].found){
-                        cyan();
-                    }
-                    else if(maze[j][i].mine && maze[j][i].found){
-                        green();
-                    }
-                    else {
-                        purple();
-                    }
-                    nDigits = floor(log10(abs(maze[j][i].v))) + 1;
-                    if(maze[j][i].v > -10){
-                        nDigits++;
-                    }
-                }
-            }
-            else {
-                if(robot.x == j && robot.y == i){
-                    blue();
-                }
-                else if(maze[j][i].mine && !maze[j][i].found){
-                    cyan();
-                }
-                else if(maze[j][i].mine && maze[j][i].found){
-                    green();
-                }
-                else{
-                    yellow();
-                }
-            }
-            if(robot.x == j && robot.y == i){
-                if(robot.direction == 0){
-                    printf(" ^ ");
-                } else if(robot.direction == 1) {
-                    printf(" > ");
-                } else if(robot.direction == 2) {
-                    printf(" v ");
-                } else {
-                    printf(" < ");
-                }
-            } else {
-                if(nDigits == 1 && !maze[j][i].mine){
-                    printf(" ");
-                }
-                if(!maze[j][i].mine){
-                    printf("%d", maze[j][i].v);
-                } else {
-                    printf("%d", -99);
-                }
-                if(maze[j][i].v > -10 && !maze[j][i].mine){
-                    printf(" ");
-                }
-            }
-            reset();
-            printf(" ! ");
-        }
-        printf("\n");
-        printf("-------------------------------------------------------------------------------\n");
-    }
-}
-
-void visualize_lee_maze(){
-    gotoxy(0,1);
-    int i, j;
-    printf("------------------------------------------------------------------------------\n");
-    for(i = 0; i < 13; i++){
-        printf("! ");
-        for(j = 0; j < 13; j++){
-            int nDigits = 1;
-            if(maze[j][i].lee_v != 0){
-                if(maze[j][i].lee_v >= 0){
-                    if(robot.x == j && robot.y == i){
-                        blue();
-                    }
-                    else if(maze[j][i].v != 0){
-                        green();
-                    }
-                    else{
-                        cyan();
-                    }
-                    nDigits = floor(log10(abs(maze[j][i].lee_v))) + 1;
-                }
-                else{
-                    if(robot.x == j && robot.y == i){
-                        blue();
-                    }
-                    else if(maze[j][i].lee_v == -99){
-                        red();
-                    }
-                    else if(maze[j][i].lee_v == -98){
-                        cyan();
+void* visualize_maze(void *arg){
+    while(1){
+        gotoxy(0,1);
+        if(VISUALIZE_LEE){
+            int i, j;
+            printf("------------------------------------------------------------------------------\n");
+            for(i = 0; i < 13; i++){
+                printf("! ");
+                for(j = 0; j < 13; j++){
+                    int nDigits = 1;
+                    if(maze[j][i].lee_v != 0){
+                        if(maze[j][i].lee_v >= 0){
+                            if(robot.x == j && robot.y == i){
+                                blue();
+                            }
+                            else if(maze[j][i].v != 0){
+                                green();
+                            }
+                            else{
+                                cyan();
+                            }
+                            nDigits = floor(log10(abs(maze[j][i].lee_v))) + 1;
+                        }
+                        else{
+                            if(robot.x == j && robot.y == i){
+                                blue();
+                            }
+                            else if(maze[j][i].lee_v == -99){
+                                red();
+                            }
+                            else if(maze[j][i].lee_v == -98){
+                                cyan();
+                            }
+                            else {
+                                purple();
+                            }
+                            nDigits = floor(log10(abs(maze[j][i].lee_v))) + 1;
+                            if(maze[j][i].lee_v > -10){
+                                nDigits++;
+                            }
+                        }
                     }
                     else {
-                        purple();
+                        if(robot.x == j && robot.y == i){
+                            blue();
+                        }
+                        else{
+                            yellow();
+                        }
                     }
-                    nDigits = floor(log10(abs(maze[j][i].lee_v))) + 1;
-                    if(maze[j][i].lee_v > -10){
-                        nDigits++;
+                    if(robot.x == j && robot.y == i){
+                        printf(" ");
+                        if(robot.direction == 0){
+                            printf("^");
+                        } else if(robot.direction == 1) {
+                            printf(">");
+                        } else if(robot.direction == 2) {
+                            printf("v");
+                        } else {
+                            printf("<");
+                        }
+                        printf(" ");
+                    } else {
+                        if(nDigits == 1){
+                            printf(" ");
+                        }
+                        printf("%d", maze[j][i].lee_v);
+                        if(maze[j][i].lee_v > -10){
+                            printf(" ");
+                        }
                     }
+                    reset();
+                    printf(" ! ");
                 }
+                printf("\n");
+                for(j = 0; j < 13; j++){
+                    printf("------");
+                }
+                printf("-");
+                printf("\n");
             }
-            else {
-                if(robot.x == j && robot.y == i){
-                    blue();
-                }
-                else{
-                    yellow();
-                }
-            }
-            if(robot.x == j && robot.y == i){
-                printf(" ");
-                if(robot.direction == 0){
-                    printf("^");
-                } else if(robot.direction == 1) {
-                    printf(">");
-                } else if(robot.direction == 2) {
-                    printf("v");
-                } else {
-                    printf("<");
-                }
-                printf(" ");
-            } else {
-                if(nDigits == 1){
-                    printf(" ");
-                }
-                printf("%d", maze[j][i].lee_v);
-                if(maze[j][i].lee_v > -10){
-                    printf(" ");
-                }
-            }
-            reset();
-            printf(" ! ");
         }
-        printf("\n");
-        for(j = 0; j < 13; j++){
-            printf("------");
+        else{
+            int i, j;
+            printf("------------------------------------------------------------------------------\n");
+            for(i = 0; i < 13; i++){
+                printf("! ");
+                for(j = 0; j < 13; j++){
+                    int nDigits = 1;
+                    if(maze[j][i].v != 0){
+                        if(maze[j][i].v >= 0){
+                            if(robot.x == j && robot.y == i){
+                                blue();
+                            }
+                            else if(maze[j][i].mine && !maze[j][i].found){
+                                cyan();
+                            }
+                            else if(maze[j][i].mine && maze[j][i].found){
+                                green();
+                            }
+                            else{
+                                green();
+                            }
+                            nDigits = floor(log10(abs(maze[j][i].v))) + 1;
+                        }
+                        else{
+                            if(robot.x == j && robot.y == i){
+                                blue();
+                            }
+                            else if(maze[j][i].v == -99){
+                                red();
+                            }
+                            else if(maze[j][i].mine && !maze[j][i].found){
+                                cyan();
+                            }
+                            else if(maze[j][i].mine && maze[j][i].found){
+                                green();
+                            }
+                            else {
+                                purple();
+                            }
+                            nDigits = floor(log10(abs(maze[j][i].v))) + 1;
+                            if(maze[j][i].v > -10){
+                                nDigits++;
+                            }
+                        }
+                    }
+                    else {
+                        if(robot.x == j && robot.y == i){
+                            blue();
+                        }
+                        else if(maze[j][i].mine && !maze[j][i].found){
+                            cyan();
+                        }
+                        else if(maze[j][i].mine && maze[j][i].found){
+                            green();
+                        }
+                        else{
+                            yellow();
+                        }
+                    }
+                    if(robot.x == j && robot.y == i){
+                        if(robot.direction == 0){
+                            printf(" ^ ");
+                        } else if(robot.direction == 1) {
+                            printf(" > ");
+                        } else if(robot.direction == 2) {
+                            printf(" v ");
+                        } else {
+                            printf(" < ");
+                        }
+                    } else {
+                        if(nDigits == 1 && !maze[j][i].mine){
+                            printf(" ");
+                        }
+                        if(!maze[j][i].mine){
+                            printf("%d", maze[j][i].v);
+                        } else {
+                            printf("%d", -99);
+                        }
+                        if(maze[j][i].v > -10 && !maze[j][i].mine){
+                            printf(" ");
+                        }
+                    }
+                    reset();
+                    printf(" ! ");
+                }
+                printf("\n");
+                printf("-------------------------------------------------------------------------------\n");
+            }
         }
-        printf("-");
-        printf("\n");
     }
-}
-
-void visualize_fast(){
-    int x, y;
-    for(x = 0; x < GRID_SIZE; x++){
-        for(y = 0; y < GRID_SIZE; y++){
-            printf("  %d  ", maze[x][y].v);
-        }
-    }
+    return NULL;
 }
 
 void found_mine(int x, int y, int direction){ //?
@@ -612,8 +609,7 @@ void initSio(HANDLE hSerial){
     dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
 
     if (!GetCommState(hSerial, &dcbSerialParams)) {
-        //error getting state
-        printf("error getting state \n");
+        perror("Error getting state \n");
     }
 
     dcbSerialParams.BaudRate = BAUDRATE;
@@ -623,7 +619,7 @@ void initSio(HANDLE hSerial){
 
     if(!SetCommState(hSerial, &dcbSerialParams)){
         //error setting serial port state
-        printf("error setting state \n");
+        perror("error setting state \n");
     }
 
     timeouts.ReadIntervalTimeout = 50;
@@ -635,7 +631,7 @@ void initSio(HANDLE hSerial){
 
     if(!SetCommTimeouts(hSerial, &timeouts)){
     //error occureed. Inform user
-        printf("error setting timeout state \n");
+        perror("error setting timeout state \n");
     }
 }
 
@@ -650,7 +646,7 @@ int readByte(HANDLE hSerial, char *buffRead) {
 
     if (!ReadFile(hSerial, buffRead, 1, &dwBytesRead, NULL))
     {
-        printf("error reading byte from input buffer \n");
+        perror("error reading byte from input buffer \n");
     }
     //printf("Byte read from read buffer is: %c \n", buffRead[0]);
     return(buffRead[0]);
@@ -667,9 +663,8 @@ int writeByte(HANDLE hSerial, char *buffWrite){
 
     if (!WriteFile(hSerial, buffWrite, 1, &dwBytesWritten, NULL))
     {
-        printf("error writing byte to output buffer \n");
+        perror("error writing byte to output buffer \n");
     }
-    printf("Byte written to write buffer is: %c \n", buffWrite[0]);
 
     return(0);
 }
@@ -733,11 +728,25 @@ void send_command_to_robot(int command){
 
 // listens to response from robot and returns what happened, 0 means unknown command, 1 means robot successfully completed command,
 // 2 means it found a mine and a new path needs to be calculated.
-int listen_to_robot(int command){
+int listen_to_robot(int command, int part){
     while(1){
         readByte(hSerial, character);
         if (strcmp(character, "Q") == 0){
-            writeByte(hSerial, "Z");
+            if(part == 2){
+                TREASURES++;
+                if(TREASURES == 3){
+                    writeByte(hSerial, "E");
+                    return 3;
+                }
+                else{
+                    writeByte(hSerial, "F");
+                    Sleep(4000);
+                }
+            }
+            else {
+                writeByte(hSerial, "Z");
+                Sleep(350);
+            }
             if(command == 1){
                 if(robot.direction == 0){
                     robot.direction = 3;
@@ -750,6 +759,8 @@ int listen_to_robot(int command){
                 } else {
                 robot.direction++;
                 }
+            } else if (command == 3){
+                robot.direction = (robot.direction + 2) % 4;
             }
             found_mine(robot.x, robot.y, robot.direction);
             robot.direction = (robot.direction + 2) % 4; // Turn around
@@ -757,59 +768,10 @@ int listen_to_robot(int command){
         }
         if (strcmp(character, "X") == 0) {
             writeByte(hSerial, "Z");
-            // update_robot_position(command, 2);
-            // if(command == 1){
-            //     if(robot.direction == 0){
-            //         robot.direction = 3;
-            //     } else {
-            //         robot.direction--;
-            //     }
-            // } else if (command == 2){
-            //     if (robot.direction == 3){
-            //         robot.direction = 0;
-            //     } else {
-            //     robot.direction++;
-            //     }
-            // }
+            Sleep(350);
             return 1;
         }
-        Sleep(100);
-    }
-}
-
-int check_for_unreachable_zeroes(){ //checks each 0 cell if it is enclosed in -1 cells, rendering it unreachable,
-                                    //and changes their value to -1 so the robot does not try to navigate there.
-    int amount_of_zeroes = 0;
-    for (int i=0; i<=12; i++){
-        for (int j=0; j<=12; j++){
-            for(int d=0; d<=3; d++){
-                if (maze[i][j].lee_v == 0 && get_neighbour_lee(i,j,d)==-1){
-                    amount_of_zeroes++;
-                }
-                if(amount_of_zeroes == 4){
-                    maze[i][j].lee_v = -1;
-                    amount_of_zeroes = 0;
-                }
-            }
-        }
-    }
-}
-
-int check_for_unreachable_zeroes(){ //checks each 0 cell if it is enclosed in -1 cells, rendering it unreachable,
-                                    //and changes their value to -1 so the robot does not try to navigate there.
-    int amount_of_zeroes = 0;
-    for (int i=0; i<=12; i++){
-        for (int j=0; j<=12; j++){
-            for(int d=0; d<=3; d++){
-                if (maze[i][j].lee_v == 0 && get_neighbour_lee(i,j,d)==-1){
-                    amount_of_zeroes++;
-                }
-                if(amount_of_zeroes == 4){
-                    maze[i][j].lee_v = -1;
-                    amount_of_zeroes = 0;
-                }
-            }
-        }
+        Sleep(1);
     }
 }
 
@@ -837,19 +799,6 @@ int get_neighbour(int x, int y, int direction){
             return maze[x][y + 1].v;
         case 3:
             return maze[x - 1][y].v;
-    }
-}
-
-int get_neighbour_lee(int x, int y, int direction){
-    switch(direction){
-        case 0:
-            return maze[x][y - 1].lee_v;
-        case 1:
-            return maze[x + 1][y].lee_v;
-        case 2:
-            return maze[x][y + 1].lee_v;
-        case 3:
-            return maze[x - 1][y].lee_v;
     }
 }
 
@@ -963,36 +912,18 @@ int best_direction(int x, int y, int direction){
     }
 }
 
-int main(){
-    srand(time(NULL));
-    int k;
-    initialize_maze();
+int part_2(){
+    writeByte(hSerial, "E");
+    int testint = 0;
+    scanf("%d", &testint);
     robot.x = 4;
     robot.y = 10;
+    robot.direction = 0;
     robot.found = 0;
-    visualize_maze();
+    initialize_maze();
 
-    // read_input();
-
-    char byteBuffer[BUFSIZ+1];
-
-    // //----------------------------------------------------------
-    // // Open COMPORT for reading and writing
-    // //----------------------------------------------------------
-    hSerial = CreateFile(COMPORT,
-        GENERIC_READ | GENERIC_WRITE,
-        0,
-        0,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        0
-    );
-
-    initSio(hSerial);
-
-    while(found_mines != 12){
-        // int new_direction = best_direction_simple(robot.x, robot.y, robot.direction);
-        int command = 0;
+    while(1){
+        int command;
         int new_direction;
         if(robot.x % 2 == 0 && robot.y % 2 == 0){
             int i = 0;
@@ -1004,20 +935,20 @@ int main(){
                     }
                 }
             }
-            if(i > 24){
+            if(i > 24 && !DONE_LEE && !LEE_TO_START){
                 new_direction = best_direction(robot.x, robot.y, robot.direction);
             }
             else if(DONE_LEE || LEE_TO_START){
                 new_direction = follow_lee();
             }
             else{
-                if(robot.found < 6){
+                VISUALIZE_LEE = true;
+                if(robot.found < MINES){
                     lee(false);
                 }
                 else{
                     lee(true);
                 }
-                // visualize_lee_maze();
                 new_direction = follow_lee();
             }
             int response;
@@ -1087,34 +1018,21 @@ int main(){
                     }
                     break;
             }
-            // send_command_to_robot(command);
-            // response = listen_to_robot(command);
-            // if(response == 0){
-            //     perror("Unknown command send by robot!");
-            // }
-            // else if(response == 1){
-            //     debug("Sensors all black");
-            // }
-            // else if(response == 2){
-            //     debug("Found mine");
-            // }
         }
         if(maze[robot.x][robot.y].lee_target){
-            if(robot.x == 2 && robot.y == 10 && robot.found >= 6){
-                writeByte(hSerial, "E");
-                return 0;
-            }
-            debug("At target");
             DONE_LEE = false;
             maze[robot.x][robot.y].lee_target = false;
         }
-        if(maze[robot.x][robot.y].mine){
-            maze[robot.x][robot.y].lee_v = -1;
-            maze[robot.x][robot.y].v = -99;
-            maze[robot.x][robot.y].found = true;
-            robot.found++;
-            command = 3;
-        }
+        // if(maze[robot.x][robot.y].mine){
+        //     maze[robot.x][robot.y].lee_v = -1;
+        //     maze[robot.x][robot.y].v = -99;
+        //     maze[robot.x][robot.y].found = true;
+        //     robot.found++;
+        //     command = 3;
+        //     DONE_LEE = false;
+        // }
+        send_command_to_robot(command);
+        int response = listen_to_robot(command, 2);
         maze[robot.x][robot.y].v--;
         switch(new_direction){
             case 0:
@@ -1146,20 +1064,211 @@ int main(){
                 maze[robot.x - 1][robot.y].v--;
                 break;
         }
-        send_command_to_robot(command);
-        int response = listen_to_robot(command);
         if(response != 2){
             update_robot_position(command, 2);
         }
-        if(DONE_LEE || LEE_TO_START){
-            visualize_lee_maze();
-        }
-        else{
-            // visualize_fast();
-            visualize_maze();
+        if(response == 3){
+            return 0;
         }
     }
+}
 
-    writeByte(hSerial, "E"); //at last, send stop byte to robot to get it to stop.
+int main(){
+    srand(time(NULL));
+    int k;
+    initialize_maze();
+    robot.x = 4;
+    robot.y = 10;
+    robot.found = 0;
+
+    pthread_t visualization_thread;
+
+    pthread_create(&visualization_thread, NULL, visualize_maze, NULL);
+
+    // read_input();
+
+    char byteBuffer[BUFSIZ+1];
+
+    // //----------------------------------------------------------
+    // // Open COMPORT for reading and writing
+    // //----------------------------------------------------------
+    hSerial = CreateFile(COMPORT,
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        0,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        0
+    );
+
+    // initSio(hSerial);
+
+    while(1){
+        Sleep(2000);
+        // int new_direction = best_direction_simple(robot.x, robot.y, robot.direction);
+        int command = 0;
+        int new_direction;
+        if(robot.x % 2 == 0 && robot.y % 2 == 0){
+            int i = 0;
+            int x, y;
+            for(x = 0; x < GRID_SIZE; x++){
+                for(y = 0; y < GRID_SIZE; y++){
+                    if(maze[x][y].v == 0){
+                        i++;
+                    }
+                }
+            }
+            if(i > 24 && !DONE_LEE && !LEE_TO_START){
+                if(robot.found >= MINES){
+                    part_2();
+                    return 0;
+                    lee(true);
+                    new_direction = follow_lee();
+                }
+                else{
+                    new_direction = best_direction(robot.x, robot.y, robot.direction);
+                }
+            }
+            else if(DONE_LEE || LEE_TO_START){
+                new_direction = follow_lee();
+            }
+            else{
+                VISUALIZE_LEE = true;
+                if(robot.found < MINES){
+                    lee(false);
+                }
+                else{
+                    part_2();
+                    return 0;
+                    lee(true);
+                }
+                new_direction = follow_lee();
+            }
+            int response;
+            switch(robot.direction){
+                case 0:
+                    switch(new_direction){
+                        case 0:
+                            command = 0;
+                            break;
+                        case 1:
+                            command = 2;
+                            break;
+                        case 2:
+                            command = 3;
+                            break;
+                        case 3:
+                            command = 1;
+                            break;
+                    }
+                    break;
+                case 1:
+                    switch(new_direction){
+                        case 0:
+                            command = 1;
+                            break;
+                        case 1:
+                            command = 0;
+                            break;
+                        case 2:
+                            command = 2;
+                            break;
+                        case 3:
+                            command = 3;
+                            break;
+                    }
+                    break;
+                case 2:
+                    switch(new_direction){
+                        case 0:
+                            command = 3;
+                            break;
+                        case 1:
+                            command = 1;
+                            break;
+                        case 2:
+                            command = 0;
+                            break;
+                        case 3:
+                            command = 2;
+                            break;
+                    }
+                    break;
+                case 3:
+                    switch(new_direction){
+                        case 0:
+                            command = 2;
+                            break;
+                        case 1:
+                            command = 3;
+                            break;
+                        case 2:
+                            command = 1;
+                            break;
+                        case 3:
+                            command = 0;
+                            break;
+                    }
+                    break;
+            }
+        }
+        if(maze[robot.x][robot.y].lee_target){
+            if(robot.x == 4 && robot.y == 10 && robot.found >= MINES){
+                if(robot.direction == 0){
+                    writeByte(hSerial, "A");
+                }
+                else if(robot.direction == 3){
+                    writeByte(hSerial, "B");
+                    Sleep(600);
+                }
+                else if(robot.direction == 1){
+                    writeByte(hSerial, "C");
+                    Sleep(600);
+                }
+                Sleep(2500);
+                // writeByte(hSerial, "E");
+                part_2();
+                return 0;
+            }
+            DONE_LEE = false;
+            maze[robot.x][robot.y].lee_target = false;
+        }
+        // send_command_to_robot(command);
+        int response = 1; //listen_to_robot(command, 1);
+        maze[robot.x][robot.y].v--;
+        switch(new_direction){
+            case 0:
+                if(maze[robot.x][robot.y - 1].lee_target){
+                    DONE_LEE = false;
+                    maze[robot.x][robot.y - 1].lee_target = false;
+                }
+                maze[robot.x][robot.y - 1].v--;
+                break;
+            case 1:
+                if(maze[robot.x + 1][robot.y].lee_target){
+                    DONE_LEE = false;
+                    maze[robot.x + 1][robot.y].lee_target = false;
+                }
+                maze[robot.x + 1][robot.y].v--;
+                break;
+            case 2:
+                if(maze[robot.x][robot.y + 1].lee_target){
+                    DONE_LEE = false;
+                    maze[robot.x][robot.y + 1].lee_target = false;
+                }
+                maze[robot.x][robot.y + 1].v--;
+                break;
+            case 3:
+                if(maze[robot.x - 1][robot.y].lee_target){
+                    DONE_LEE = false;
+                    maze[robot.x - 1][robot.y].lee_target = false;
+                }
+                maze[robot.x - 1][robot.y].v--;
+                break;
+        }
+        if(response != 2){
+            update_robot_position(command, 2);
+        }
+    }
     return 0;
 }
