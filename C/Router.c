@@ -9,7 +9,6 @@
 #include <time.h>
 #include <string.h>
 #include <Windows.h>
-#include <pthread.h>
 
 #define COMPORT "COM3"
 #define BAUDRATE CBR_9600
@@ -853,7 +852,7 @@ int listen_to_robot(int command){
     while(1){
         readByte(hSerial, character);
         if (strcmp(character, "Q") == 0){
-            writeByte(hSerial, "Z");
+            // writeByte(hSerial, "Q");
             if(command == 1){
                 if(robot.direction == 0){
                     robot.direction = 3;
